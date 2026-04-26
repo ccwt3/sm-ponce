@@ -1,0 +1,30 @@
+.add_item_button, .dropDownMenu {
+  border: 1px solid transparent;
+}
+
+.add_item_button:hover{
+  border-color: red;
+}
+
+.dropDownMenu:hover {
+  border-color: red;
+}
+
+.dropDownMenuContent button:hover {
+  border-color: red;
+}
+
+.searchBar {
+  width: 400px;
+}
+
+.editModal {
+  background-color: black;
+  color: white;
+  left: 0;
+  top: 0;
+  translate: 0 50%;
+
+  width: 50dvw;
+  height: 45dvh;
+}
