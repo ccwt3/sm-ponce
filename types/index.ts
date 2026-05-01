@@ -16,8 +16,8 @@ export interface Product {
   medida: string;
   tipo: ProductType;
   existencia: number;
-  precioProveedor: number;
-  precioPublico: number;
+  precio_proveedor: number;
+  precio_publico: number;
   creadoEn?: string; // ISO date string
   actualizadoEn?: string;
 }
@@ -42,7 +42,7 @@ export type ProductResponse = ApiResponse<Product>;
 
 export type SortField = keyof Pick<
   Product,
-  "nombre" | "tipo" | "existencia" | "precioProveedor" | "precioPublico"
+  "nombre" | "tipo" | "existencia" | "precio_proveedor" | "precio_publico"
 >;
 
 export type SortDirection = "asc" | "desc";

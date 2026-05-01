@@ -19,19 +19,21 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type { Product, CreateProductInput } from "@/types";
+import itemsDatabase from "@/database/items";
 
 // ─── GET /api/products ───────────────────────────────────────────────────────
 export async function GET() {
   try {
     //todo Remplazar con mi query real de prisma (agregar paginacion)
 
-    const products: Product[] = []; // 👈 reemplazar con query real
+    const products: Product[] = await itemsDatabase.getAllProducts();
 
+    // respuesta que debe dar
     return NextResponse.json({ data: products });
   } catch (error) {
     return NextResponse.json(
       { error: "Error al obtener productos" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (!body.nombre || !body.modelo) {
       return NextResponse.json(
         { error: "nombre y modelo son requeridos" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: "Error al crear producto" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

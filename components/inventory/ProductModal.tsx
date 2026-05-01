@@ -16,8 +16,8 @@ const EMPTY_FORM: CreateProductInput = {
   medida: "",
   tipo: "",
   existencia: 0,
-  precioProveedor: 0,
-  precioPublico: 0,
+  precio_proveedor: 0,
+  precio_publico: 0,
 };
 
 export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModalProps) {
@@ -131,8 +131,8 @@ export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModa
               type="number"
               min={0}
               className={inputClass}
-              value={form.precioProveedor}
-              onChange={(e) => handleChange("precioProveedor", Number(e.target.value))}
+              value={form.precio_proveedor}
+              onChange={(e) => handleChange("precio_proveedor", Number(e.target.value))}
             />
           </div>
 
@@ -144,8 +144,8 @@ export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModa
               type="number"
               min={0}
               className={inputClass}
-              value={form.precioPublico}
-              onChange={(e) => handleChange("precioPublico", Number(e.target.value))}
+              value={form.precio_publico}
+              onChange={(e) => handleChange("precio_publico", Number(e.target.value))}
             />
           </div>
         </div>

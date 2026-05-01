@@ -1,8 +1,20 @@
 "use client";
+//TODO : refactorizar a useProducts para ser más genérico y reutilizable al momento de cambiar el tipo de informacion de la bd
+//TODO (ej: agregar una columna de "proveedor" sin tener que hardcodear todo el hook de nuevo)
 
 import { useState, useEffect, useCallback } from "react";
-import type { Product, CreateProductInput, UpdateProductInput, ModalState } from "@/types";
-import { getProducts, createProduct, updateProduct, deleteProduct } from "@/lib/api";
+import type {
+  Product,
+  CreateProductInput,
+  UpdateProductInput,
+  ModalState,
+} from "@/types";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/lib/api";
 
 /**
  * Hook principal de la tabla de inventario.
@@ -24,6 +36,7 @@ export function useInventory() {
     try {
       setLoading(true);
       setError(null);
+
       const data = await getProducts(); // llama a GET /api/products
       setProducts(data);
     } catch (err) {
@@ -38,13 +51,13 @@ export function useInventory() {
   }, [fetchProducts]);
 
   // ── Búsqueda local (no requiere re-fetch) ────────────────────────────────
+  const searchFields = ["nombre", "modelo", "tipo"] as const;
   const filteredProducts = products.filter((p) => {
     const q = search.toLowerCase();
-    return (
-      p.nombre.toLowerCase().includes(q) ||
-      p.modelo.toLowerCase().includes(q) ||
-      p.tipo.toLowerCase().includes(q)
-    );
+    return searchFields.some((field) => {
+      // Pasa por cada campo relevante
+      return String(p[field]).toLowerCase().includes(q);
+    });
   });
 
   // ── 📌 Crear producto ────────────────────────────────────────────────────
@@ -62,7 +75,9 @@ export function useInventory() {
   const handleUpdate = async (input: UpdateProductInput) => {
     try {
       const updated = await updateProduct(input); // PUT /api/products/:id → DB
-      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p)),
+      );
       setModal({ mode: "closed" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al actualizar");
