@@ -1,5 +1,19 @@
 // ─── Product ────────────────────────────────────────────────────────────────
 
+// Lo que devuelve Supabase (raw)
+export interface RawProduct {
+  id: string;
+  nombre: string;
+  modelo: string;
+  medida: string;
+  tipo: { tipo_de_producto: string } | null;  // objeto, siempre
+  existencia: number;
+  precio_proveedor: number;
+  precio_publico: number;
+  creadoEn?: string;
+  actualizadoEn?: string;
+}
+
 export interface Product {
   id: string;
   nombre: string;

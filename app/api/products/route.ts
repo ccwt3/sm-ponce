@@ -24,9 +24,12 @@ import itemsDatabase from "@/database/items";
 // ─── GET /api/products ───────────────────────────────────────────────────────
 export async function GET() {
   try {
-    //todo Remplazar con mi query real de prisma (agregar paginacion)
-
-    const products: Product[] = await itemsDatabase.getAllProducts();
+    const rawProducts = await itemsDatabase.getAllProducts();
+    // GET handler — limpio, sin casteos raros
+    const products: Product[] = rawProducts.map((p) => ({
+      ...p,
+      tipo: p.tipo?.tipo_de_producto ?? "Sin tipo",
+    }));
 
     // respuesta que debe dar
     return NextResponse.json({ data: products });
@@ -51,13 +54,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔌 REEMPLAZA ESTO con tu insert real:
-    //
-    //   Prisma:   const product = await prisma.product.create({ data: body })
-    //   Drizzle:  const [product] = await db.insert(productsTable).values(body).returning()
-    //   Supabase: const { data: product } = await supabase.from("products").insert(body).select().single()
+    const backedProduct = await itemsDatabase.createProduct(body);
 
-    const product: Product = { id: "REPLACE_WITH_DB_ID", ...body }; // 👈 reemplazar
+    const product: Product = { id: backedProduct.id, ...body }; // 👈 reemplazar
 
     return NextResponse.json({ data: product }, { status: 201 });
   } catch (error) {

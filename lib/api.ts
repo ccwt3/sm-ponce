@@ -53,6 +53,7 @@ async function apiFetch<T>(
  */
 export async function getProducts(): Promise<Product[]> {
   const response = await apiFetch<ProductListResponse>("/products");
+  console.log(response);
   return response.data;
 }
 
