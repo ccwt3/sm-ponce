@@ -2,6 +2,7 @@
 
 import type { Product } from "@/types";
 import { RowInformation } from "@/components/inventory/ProductTableRows";
+import { databaseFields } from "@/lib/contentNormalizer";
 
 interface ProductTableProps {
   products: Product[];
@@ -9,16 +10,10 @@ interface ProductTableProps {
   onDelete: (id: string) => void;
 }
 
-const fields = [
-  "Nombre",
-  "Modelo",
-  "Medida",
-  "Tipo",
-  "Existencia",
-  "Precio proveedor",
-  "Precio público",
-  "Acciones",
-];
+const editedFields = [
+  ...databaseFields,
+  { name: "acciones", label: "Acciones", type: 0 },
+]; // agregando la columna acciones al final de todo los campos modulares
 
 export function ProductTable({
   products,
@@ -38,12 +33,12 @@ export function ProductTable({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-brand-border">
-            {fields.map((col) => (
+            {editedFields.map((col) => (
               <th
-                key={col}
+                key={col.name}
                 className="px-3 py-2.5 text-left text-xs font-normal text-brand-text-secondary"
               >
-                {col}
+                {col.label}
               </th>
             ))}
           </tr>

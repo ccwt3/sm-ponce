@@ -51,7 +51,7 @@ export function useInventory() {
   }, [fetchProducts]);
 
   // ── Búsqueda local (no requiere re-fetch) ────────────────────────────────
-  const searchFields = ["nombre", "modelo", "tipo"] as const;
+  const searchFields = ["nombre", "medida", "modelo", "tipo"] as const;
   const filteredProducts = products.filter((p) => {
     const q = search.toLowerCase();
     return searchFields.some((field) => {
@@ -74,6 +74,8 @@ export function useInventory() {
   // ── 📌 Actualizar producto ───────────────────────────────────────────────
   const handleUpdate = async (input: UpdateProductInput) => {
     try {
+      console.log(input);
+
       const updated = await updateProduct(input); // PUT /api/products/:id → DB
       setProducts((prev) =>
         prev.map((p) => (p.id === updated.id ? updated : p)),

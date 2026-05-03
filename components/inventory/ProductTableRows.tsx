@@ -1,58 +1,16 @@
 import { StockBadge } from "@/components/ui/StockBadge";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
+import { databaseFields } from "@/lib/contentNormalizer";
 
 //type 1 is for important fields
 //type 0 is for normal fields
 //type 2 is for numeric fields that need formatting (like price)
 //type 3 is for stock that needs a badge (decoration)
 
-const databaseFields = [
-  {
-    name: "nombre",
-    label: "Nombre",
-    type: 1,
-  },
-  {
-    name: "modelo",
-    label: "Modelo",
-    type: 0,
-  },
-  {
-    name: "medida",
-    label: "Medida",
-    type: 0,
-  },
-  {
-    name: "tipo",
-    label: "Tipo",
-    type: 0,
-  },
-  {
-    name: "existencia",
-    label: "Existencia",
-    type: 3,
-  },
-  {
-    name: "precio_proveedor",
-    label: "Precio Proveedor",
-    type: 2,
-  },
-  {
-    name: "precio_publico",
-    label: "Precio Público",
-    type: 2,
-  },
-] as const;
-
 export function RowInformation({ product }: { product: Product }) {
   const rowContent = databaseFields.map((field) => {
     if (product[field.name] === undefined || product[field.name] === null) {
-      console.warn(
-        `El campo "${field.label}" no existe en el producto:`,
-        product,
-      );
-
       return (
         <td key={field.name} className="px-3 py-3.5 text-brand-text-secondary">
           N/A

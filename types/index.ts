@@ -1,20 +1,11 @@
 // ─── Product ────────────────────────────────────────────────────────────────
 
-export type ProductType =
-  | "Domo"
-  | "Red"
-  | "Grabador"
-  | "Eléctrico"
-  | "Analógico"
-  | "IP"
-  | string;
-
 export interface Product {
   id: string;
   nombre: string;
   modelo: string;
   medida: string;
-  tipo: ProductType;
+  tipo: string;
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { ModalState, CreateProductInput, UpdateProductInput } from "@/types";
+import { ProductModalFields } from "./ProductModalFields";
 
 interface ProductModalProps {
   modal: ModalState;
@@ -72,82 +73,7 @@ export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModa
 
         <div className="grid grid-cols-2 gap-3">
           {/* Nombre — fila completa */}
-          <div className="col-span-2">
-            <label className="mb-1 block text-xs text-brand-text-secondary">Nombre</label>
-            <input
-              className={inputClass}
-              placeholder="Ej. Cámara de seguridad"
-              value={form.nombre}
-              onChange={(e) => handleChange("nombre", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">Modelo</label>
-            <input
-              className={inputClass}
-              placeholder="CS-400X"
-              value={form.modelo}
-              onChange={(e) => handleChange("modelo", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">Medida</label>
-            <input
-              className={inputClass}
-              placeholder='1/2"'
-              value={form.medida}
-              onChange={(e) => handleChange("medida", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">Tipo</label>
-            <input
-              className={inputClass}
-              placeholder="Domo / Red / Grabador…"
-              value={form.tipo}
-              onChange={(e) => handleChange("tipo", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">Existencia</label>
-            <input
-              type="number"
-              min={0}
-              className={inputClass}
-              value={form.existencia}
-              onChange={(e) => handleChange("existencia", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">
-              Precio proveedor
-            </label>
-            <input
-              type="number"
-              min={0}
-              className={inputClass}
-              value={form.precio_proveedor}
-              onChange={(e) => handleChange("precio_proveedor", Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-brand-text-secondary">
-              Precio público
-            </label>
-            <input
-              type="number"
-              min={0}
-              className={inputClass}
-              value={form.precio_publico}
-              onChange={(e) => handleChange("precio_publico", Number(e.target.value))}
-            />
-          </div>
+          <ProductModalFields handleChange={handleChange} form={form} />
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
