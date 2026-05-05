@@ -50,8 +50,9 @@ export function useInventory() {
     fetchProducts();
   }, [fetchProducts]);
 
+  //! HARDCODED INDICES
   // ── Búsqueda local (no requiere re-fetch) ────────────────────────────────
-  const searchFields = ["nombre", "medida", "modelo", "tipo"] as const;
+  const searchFields = ["nombre", "medida", "modelo", "tipo_id"] as const;
   const filteredProducts = products.filter((p) => {
     const q = search.toLowerCase();
     return searchFields.some((field) => {
@@ -74,7 +75,7 @@ export function useInventory() {
   // ── 📌 Actualizar producto ───────────────────────────────────────────────
   const handleUpdate = async (input: UpdateProductInput) => {
     try {
-      console.log(input);
+      console.log("input", input);
 
       const updated = await updateProduct(input); // PUT /api/products/:id → DB
       setProducts((prev) =>

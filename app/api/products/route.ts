@@ -26,10 +26,15 @@ export async function GET() {
   try {
     const rawProducts = await itemsDatabase.getAllProducts();
     // GET handler — limpio, sin casteos raros
-    const products: Product[] = rawProducts.map((p) => ({
-      ...p,
-      tipo: p.tipo?.tipo_de_producto ?? "Sin tipo",
-    }));
+    //! HARDOCODED INDICES
+    const products: Product[] = rawProducts.map((p) => {
+      const {tipo, ...rest} = p;
+
+      return {
+        ...rest,
+        tipo_id: tipo?.tipo_de_producto ?? "Sin tipo",
+      };
+    });
 
     // respuesta que debe dar
     return NextResponse.json({ data: products });

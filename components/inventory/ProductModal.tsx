@@ -11,11 +11,12 @@ interface ProductModalProps {
   onUpdate: (input: UpdateProductInput) => Promise<void>;
 }
 
+//! HARDCODED INDICES
 const EMPTY_FORM: CreateProductInput = {
   nombre: "",
   modelo: "",
   medida: "",
-  tipo: "",
+  tipo_id: "",
   existencia: 0,
   precio_proveedor: 0,
   precio_publico: 0,

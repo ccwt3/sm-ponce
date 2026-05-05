@@ -1,3 +1,5 @@
+//! HARDCODED INDICES
+
 export const databaseFields = [
   {
     name: "nombre",
@@ -15,8 +17,7 @@ export const databaseFields = [
     type: 0,
   },
   {
-    name: "tipo",
-
+    name: "tipo_id",
     label: "Tipo",
     type: 0,
   },

@@ -34,6 +34,23 @@ class ItemsDatabase {
     return products as RawProduct[];
   }
 
+  async getProductById(id: string): Promise<Product | null> {
+    const supabase = await this._getSupabaseClient();
+
+    const { data: product, error } = await supabase
+      .from("producto")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error("Error fetching product by ID:", error);
+      throw new Error("Error fetching product by ID");
+    }
+
+    return product;
+  }
+
   async createProduct(body: CreateProductInput) {
     const supabase = await this._getSupabaseClient();
 
@@ -49,6 +66,24 @@ class ItemsDatabase {
     }
 
     return product[0];
+  }
+
+  async updateProduct(body: Partial<CreateProductInput> & { id: string }) {
+    const supabase = await this._getSupabaseClient();
+
+    const { data: product, error } = await supabase
+      .from("producto")
+      .update(body)
+      .eq("id", body.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating product:", error);
+      throw new Error("Error updating product");
+    }
+
+    return product;
   }
 }
 

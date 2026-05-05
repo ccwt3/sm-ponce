@@ -1,5 +1,7 @@
 // ─── Product ────────────────────────────────────────────────────────────────
 
+//! HARDCODED INDICES
+
 // Lo que devuelve Supabase (raw)
 export interface RawProduct {
   id: string;
@@ -19,7 +21,7 @@ export interface Product {
   nombre: string;
   modelo: string;
   medida: string;
-  tipo: string;
+  tipo_id: string;
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;
@@ -47,7 +49,7 @@ export type ProductResponse = ApiResponse<Product>;
 
 export type SortField = keyof Pick<
   Product,
-  "nombre" | "tipo" | "existencia" | "precio_proveedor" | "precio_publico"
+  "nombre" | "tipo_id" | "existencia" | "precio_proveedor" | "precio_publico"
 >;
 
 export type SortDirection = "asc" | "desc";
