@@ -21,7 +21,6 @@ export function ProductModalFields({
         </label>
         <input
           className={inputClass}
-          placeholder="Ej. Bujia para motoneta"
           value={form[field.name] || ""}
           onChange={(e) => handleChange(field.name, e.target.value)}
         />

@@ -27,6 +27,7 @@ export interface Product {
   precio_publico: number;
   creadoEn?: string; // ISO date string
   actualizadoEn?: string;
+  user_id?: string; // ID del usuario que creó o actualizó el producto
 }
 
 // Payload para crear un producto (sin id ni timestamps)

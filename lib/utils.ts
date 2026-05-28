@@ -11,7 +11,6 @@ export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-
 /**
  * Formatea un número como precio en pesos mexicanos.
  * Ejemplo: 1200 → "$1,200"
@@ -53,16 +52,15 @@ export function generateTempId(): string {
 /**
  * Filtra un arreglo de productos por un término de búsqueda.
  */
-export function filterProducts<T extends { nombre: string; modelo: string; tipo: string }>(
-  products: T[],
-  query: string
-): T[] {
+export function filterProducts<
+  T extends { nombre: string; modelo: string; tipo: string },
+>(products: T[], query: string): T[] {
   const q = query.toLowerCase().trim();
   if (!q) return products;
   return products.filter(
     (p) =>
       p.nombre.toLowerCase().includes(q) ||
       p.modelo.toLowerCase().includes(q) ||
-      p.tipo.toLowerCase().includes(q)
+      p.tipo.toLowerCase().includes(q),
   );
 }

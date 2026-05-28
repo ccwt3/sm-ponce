@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Product, CreateProductInput } from "@/types";
 import itemsDatabase from "@/database/items";
+import { getCurrentUserId } from "@/lib/server-utils";
 
 // ─── GET /api/products ───────────────────────────────────────────────────────
 export async function GET() {
@@ -59,7 +60,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const backedProduct = await itemsDatabase.createProduct(body);
+    //todo Agregar el id del usuario activo para agregarlo a user_id en la base de datos
+    const userId = await getCurrentUserId();
+
+    const backedProduct = await itemsDatabase.createProduct({...body, user_id:userId});
 
     const product: Product = { id: backedProduct.id, ...body }; // 👈 reemplazar
 

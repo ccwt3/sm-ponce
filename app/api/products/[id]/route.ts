@@ -5,10 +5,10 @@ import ItemsDatabase from "@/database/items";
 // ─── GET /api/products/:id ───────────────────────────────────────────────────
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const product = await ItemsDatabase.getProductById(id); // 👈 reemplazar con query real
 
@@ -58,10 +58,10 @@ export async function PUT(
 // ─── DELETE /api/products/:id ────────────────────────────────────────────────
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // 🔌 Prisma:   await prisma.product.delete({ where: { id } })
     // 🔌 Drizzle:  await db.delete(productsTable).where(eq(productsTable.id, id))

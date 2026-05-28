@@ -65,7 +65,8 @@ class ItemsDatabase {
       throw new Error("Error creating product");
     }
 
-    return product[0];
+    console.log(product);
+    return product;
   }
 
   async updateProduct(body: Partial<CreateProductInput> & { id: string }) {
