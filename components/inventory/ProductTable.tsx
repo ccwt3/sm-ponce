@@ -1,5 +1,3 @@
-"use client";
-
 import type { Product } from "@/types";
 import { RowInformation } from "@/components/inventory/ProductTableRows";
 import { databaseFields } from "@/lib/contentNormalizer";

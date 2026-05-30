@@ -1,43 +1,45 @@
 "use client";
-//TODO : refactorizar a useProducts para ser más genérico y reutilizable al momento de cambiar el tipo de informacion de la bd
-//TODO (ej: agregar una columna de "proveedor" sin tener que hardcodear todo el hook de nuevo)
 
-import { useState, useEffect, useCallback } from "react";
-import type {
-  Product,
-  CreateProductInput,
-  UpdateProductInput,
-  ModalState,
-} from "@/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
-  getProducts,
   createProduct,
-  updateProduct,
   deleteProduct,
+  getProducts,
+  updateProduct,
 } from "@/lib/api";
 
-/**
- * Hook principal de la tabla de inventario.
- *
- * Encapsula:
- *  - Fetching de productos desde la API (📌 conecta a DB vía /api/products)
- *  - Estado local: búsqueda, modal, loading, error
- *  - Acciones CRUD con optimistic updates
- */
-export function useInventory() {
-  const [products, setProducts] = useState<Product[]>([]);
+import type {
+  CreateProductInput,
+  ModalState,
+  Product,
+  UpdateProductInput,
+} from "@/types";
+
+interface UseInventoryOptions {
+  initialError?: string | null;
+  initialProducts?: Product[];
+}
+
+const searchFields = ["nombre", "medida", "modelo", "tipo_id"] as const;
+
+export function useInventory({
+  initialError = null,
+  initialProducts,
+}: UseInventoryOptions = {}) {
+  const hasInitialProducts = initialProducts !== undefined;
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? []);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!hasInitialProducts && !initialError);
+  const [error, setError] = useState<string | null>(initialError);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
 
-  // ── 📌 Carga inicial desde la base de datos ──────────────────────────────
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await getProducts(); // llama a GET /api/products
+      const data = await getProducts();
       setProducts(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -47,24 +49,29 @@ export function useInventory() {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    if (!hasInitialProducts && !initialError) {
+      fetchProducts();
+    }
+  }, [fetchProducts, hasInitialProducts, initialError]);
 
-  //! HARDCODED INDICES
-  // ── Búsqueda local (no requiere re-fetch) ────────────────────────────────
-  const searchFields = ["nombre", "medida", "modelo", "tipo_id"] as const;
-  const filteredProducts = products.filter((p) => {
-    const q = search.toLowerCase();
-    return searchFields.some((field) => {
-      // Pasa por cada campo relevante
-      return String(p[field]).toLowerCase().includes(q);
-    });
-  });
+  const filteredProducts = useMemo(() => {
+    const query = search.toLowerCase().trim();
 
-  // ── 📌 Crear producto ────────────────────────────────────────────────────
+    if (!query) {
+      return products;
+    }
+
+    return products.filter((product) =>
+      searchFields.some((field) =>
+        String(product[field]).toLowerCase().includes(query),
+      ),
+    );
+  }, [products, search]);
+
   const handleCreate = async (input: CreateProductInput) => {
     try {
-      const created = await createProduct(input); // POST /api/products → DB
+      setError(null);
+      const created = await createProduct(input);
       setProducts((prev) => [...prev, created]);
       setModal({ mode: "closed" });
     } catch (err) {
@@ -72,14 +79,12 @@ export function useInventory() {
     }
   };
 
-  // ── 📌 Actualizar producto ───────────────────────────────────────────────
   const handleUpdate = async (input: UpdateProductInput) => {
     try {
-      console.log("input", input);
-
-      const updated = await updateProduct(input); // PUT /api/products/:id → DB
+      setError(null);
+      const updated = await updateProduct(input);
       setProducts((prev) =>
-        prev.map((p) => (p.id === updated.id ? updated : p)),
+        prev.map((product) => (product.id === updated.id ? updated : product)),
       );
       setModal({ mode: "closed" });
     } catch (err) {
@@ -87,25 +92,25 @@ export function useInventory() {
     }
   };
 
-  // ── 📌 Eliminar producto ─────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
-    // Optimistic update: eliminar de UI antes de confirmar en DB
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    const previousProducts = products;
+
+    setError(null);
+    setProducts((prev) => prev.filter((product) => product.id !== id));
+
     try {
-      await deleteProduct(id); // DELETE /api/products/:id → DB
+      await deleteProduct(id);
     } catch (err) {
+      setProducts(previousProducts);
       setError(err instanceof Error ? err.message : "Error al eliminar");
-      fetchProducts(); // revertir si falla
     }
   };
 
-  // ── Modal helpers ─────────────────────────────────────────────────────────
   const openCreate = () => setModal({ mode: "create" });
   const openEdit = (product: Product) => setModal({ mode: "edit", product });
   const closeModal = () => setModal({ mode: "closed" });
 
   return {
-    // estado
     products: filteredProducts,
     totalProducts: products.length,
     search,
@@ -113,7 +118,6 @@ export function useInventory() {
     loading,
     error,
     modal,
-    // acciones
     handleCreate,
     handleUpdate,
     handleDelete,

@@ -1,8 +1,12 @@
-"use client";
+import { useEffect, useState } from "react";
 
-import { useState, useEffect } from "react";
-import type { ModalState, CreateProductInput, UpdateProductInput } from "@/types";
-import { ProductModalFields } from "./ProductModalFields";
+import { ProductModalFields } from "@/components/inventory/ProductModalFields";
+import type {
+  CreateProductInput,
+  ModalState,
+  Product,
+  UpdateProductInput,
+} from "@/types";
 
 interface ProductModalProps {
   modal: ModalState;
@@ -11,7 +15,6 @@ interface ProductModalProps {
   onUpdate: (input: UpdateProductInput) => Promise<void>;
 }
 
-//! HARDCODED INDICES
 const EMPTY_FORM: CreateProductInput = {
   nombre: "",
   modelo: "",
@@ -22,31 +25,54 @@ const EMPTY_FORM: CreateProductInput = {
   precio_publico: 0,
 };
 
-export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModalProps) {
+function toProductForm(product: Product): CreateProductInput {
+  return {
+    nombre: product.nombre,
+    modelo: product.modelo,
+    medida: product.medida,
+    tipo_id: product.tipo_id,
+    existencia: product.existencia,
+    precio_proveedor: product.precio_proveedor,
+    precio_publico: product.precio_publico,
+    user_id: product.user_id,
+  };
+}
+
+export function ProductModal({
+  modal,
+  onClose,
+  onCreate,
+  onUpdate,
+}: ProductModalProps) {
   const [form, setForm] = useState<CreateProductInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const isEdit = modal.mode === "edit";
 
-  // Precarga datos al abrir en modo edición
   useEffect(() => {
-    if (isEdit && modal.product) {
-      const { id, creadoEn, actualizadoEn, ...rest } = modal.product;
-      setForm(rest);
-    } else {
-      setForm(EMPTY_FORM);
+    if (modal.mode === "edit" && modal.product) {
+      setForm(toProductForm(modal.product));
+      return;
     }
+
+    setForm(EMPTY_FORM);
   }, [modal]);
 
-  if (modal.mode === "closed") return null;
+  if (modal.mode === "closed") {
+    return null;
+  }
 
   const handleChange = (key: keyof CreateProductInput, value: string | number) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim()) return;
+    if (!form.nombre.trim()) {
+      return;
+    }
+
     setSaving(true);
+
     try {
       if (isEdit && modal.product) {
         await onUpdate({ id: modal.product.id, ...form });
@@ -58,14 +84,10 @@ export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModa
     }
   };
 
-  const inputClass =
-    "w-full rounded-md border border-brand-border bg-white px-3 py-2 text-sm text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-black";
-
   return (
-    // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-16 px-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 px-4 pt-16"
+      onClick={(event) => event.target === event.currentTarget && onClose()}
     >
       <div className="w-full max-w-md animate-modal-in rounded-lg border border-brand-border bg-white p-6 shadow-modal">
         <h2 className="mb-5 text-base font-medium text-brand-text-primary">
@@ -73,23 +95,22 @@ export function ProductModal({ modal, onClose, onCreate, onUpdate }: ProductModa
         </h2>
 
         <div className="grid grid-cols-2 gap-3">
-          {/* Nombre — fila completa */}
           <ProductModalFields handleChange={handleChange} form={form} />
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-md border border-brand-border px-4 py-2 text-sm text-brand-text-secondary hover:bg-brand-surface transition-colors"
+            className="rounded-md border border-brand-border px-4 py-2 text-sm text-brand-text-secondary transition-colors hover:bg-brand-surface"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving || !form.nombre.trim()}
-            className="rounded-md bg-brand-black px-4 py-2 text-sm font-medium text-white hover:bg-brand-black-hover disabled:opacity-50 transition-colors"
+            className="rounded-md bg-brand-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-black-hover disabled:opacity-50"
           >
-            {saving ? "Guardando…" : "Guardar"}
+            {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
       </div>
