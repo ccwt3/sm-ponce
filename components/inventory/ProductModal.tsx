@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ProductModalFields } from "@/components/inventory/ProductModalFields";
+import { inventoryButton } from "@/components/inventory/styles";
 import type {
   CreateProductInput,
   ModalState,
@@ -89,8 +90,8 @@ export function ProductModal({
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 px-4 pt-16"
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md animate-modal-in rounded-lg border border-brand-border bg-white p-6 shadow-modal">
-        <h2 className="mb-5 text-base font-medium text-brand-text-primary">
+      <div className="w-full max-w-md animate-modal-in rounded-lg border border-border bg-background p-6 shadow-modal">
+        <h2 className="mb-5 text-base font-medium text-foreground">
           {isEdit ? "Editar producto" : "Agregar producto"}
         </h2>
 
@@ -101,14 +102,14 @@ export function ProductModal({
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-md border border-brand-border px-4 py-2 text-sm text-brand-text-secondary transition-colors hover:bg-brand-surface"
+            className={inventoryButton.secondary}
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={saving || !form.nombre.trim()}
-            className="rounded-md bg-brand-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-black-hover disabled:opacity-50"
+            className={inventoryButton.modalPrimary}
           >
             {saving ? "Guardando..." : "Guardar"}
           </button>

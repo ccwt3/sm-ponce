@@ -4,7 +4,13 @@ import { Search } from "lucide-react";
 
 import { ProductModal } from "@/components/inventory/ProductModal";
 import { ProductTable } from "@/components/inventory/ProductTable";
+import {
+  inventoryButton,
+  inventoryForm,
+  inventoryState,
+} from "@/components/inventory/styles";
 import { useInventory } from "@/hooks/useInventory";
+import { cn } from "@/lib/utils";
 import type { Product } from "@/types";
 
 interface InventoryDashboardClientProps {
@@ -45,24 +51,24 @@ export function InventoryDashboardClient({
               placeholder="Buscar"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-52 rounded-md border border-brand-border bg-white py-2 pl-8 pr-3 text-sm text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-black"
+              className={cn(inventoryForm.input, "w-52 pl-8 pr-3")}
             />
           </div>
           <button
             onClick={openCreate}
-            className="rounded-md bg-brand-black px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-black-hover"
+            className={inventoryButton.primary}
           >
             Agregar
           </button>
         </div>
 
         {loading && (
-          <p className="py-12 text-center text-sm text-brand-text-muted">
+          <p className={inventoryState.loading}>
             Cargando productos...
           </p>
         )}
         {error && (
-          <p className="py-12 text-center text-sm text-brand-danger">{error}</p>
+          <p className={inventoryState.error}>{error}</p>
         )}
 
         {!loading && !error && (

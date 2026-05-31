@@ -85,10 +85,10 @@ export function TypeCombobox({ value = "", onValueChange }: TypeComboboxProps) {
         <Button
           variant="default"
           role="combobox"
-          className="w-full justify-between"
+          className="w-full justify-between bg-background px-3 font-normal text-foreground hover:bg-accent hover:text-accent-foreground"
           aria-expanded={open}
         >
-          {selectedLabel}
+          <span className="truncate">{selectedLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>

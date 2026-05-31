@@ -1,5 +1,10 @@
 import type { Product } from "@/types";
 import { RowInformation } from "@/components/inventory/ProductTableRows";
+import {
+  inventoryButton,
+  inventoryState,
+  inventoryTable,
+} from "@/components/inventory/styles";
 import { databaseFields } from "@/lib/contentNormalizer";
 
 interface ProductTableProps {
@@ -20,7 +25,7 @@ export function ProductTable({
 }: ProductTableProps) {
   if (products.length === 0) {
     return (
-      <div className="py-16 text-center text-sm text-brand-text-muted">
+      <div className={inventoryState.empty}>
         No se encontraron productos.
       </div>
     );
@@ -30,11 +35,11 @@ export function ProductTable({
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-brand-border">
+          <tr className="border-b border-border">
             {editedFields.map((col) => (
               <th
                 key={col.name}
-                className="px-3 py-2.5 text-left text-xs font-normal text-brand-text-secondary"
+                className={inventoryTable.heading}
               >
                 {col.label}
               </th>
@@ -45,21 +50,21 @@ export function ProductTable({
           {products.map((product) => (
             <tr
               key={product.id}
-              className="border-b border-brand-border last:border-0 hover:bg-brand-surface transition-colors"
+              className={inventoryTable.row}
             >
               <RowInformation product={product} />
 
-              <td className="px-3 py-3.5">
+              <td className={inventoryTable.cell}>
                 <div className="flex gap-2">
                   <button
                     onClick={() => onEdit(product)}
-                    className="rounded border border-brand-border px-3 py-1 text-xs text-brand-text-primary hover:bg-brand-surface transition-colors"
+                    className={inventoryButton.table}
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => onDelete(product.id)}
-                    className="rounded border border-brand-danger-border px-3 py-1 text-xs text-brand-danger hover:bg-brand-danger-hover-bg transition-colors"
+                    className={inventoryButton.dangerTable}
                   >
                     Borrar
                   </button>

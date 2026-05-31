@@ -12,67 +12,24 @@ export default {
     extend: {
       colors: {
         brand: {
-          // Neutros base (fondo blanco, tabla, superficie)
           white: "#FFFFFF",
           surface: "#F9F9F9",
           border: "#E5E5E5",
-
-          // Texto
           "text-primary": "#111111",
           "text-secondary": "#6B7280",
           "text-muted": "#9CA3AF",
-
-          // Acción principal (botón "Agregar", negro casi puro de la imagen)
           black: "#1A1A1A",
           "black-hover": "#333333",
-
-          // Stock: verde (existencia alta)
           "stock-ok-bg": "#D1FAE5",
           "stock-ok-text": "#065F46",
-
-          // Stock: amarillo (existencia baja ≤ 3)
           "stock-low-bg": "#FEF3C7",
           "stock-low-text": "#92400E",
-
-          // Stock: rojo (sin existencia = 0)
           "stock-empty-bg": "#FDE8E8",
           "stock-empty-text": "#C53030",
-
-          // Botón borrar
           danger: "#C53030",
           "danger-border": "#F0A0A0",
           "danger-hover-bg": "#FDE8E8",
         },
-
-        // ── Bordes y radios ───────────────────────────────────────────────────
-        borderRadius: {
-          DEFAULT: "6px",
-          md: "8px",
-          lg: "12px",
-        },
-
-        // ── Sombras sutiles ───────────────────────────────────────────────────
-        boxShadow: {
-          dropdown: "0 4px 16px rgba(0, 0, 0, 0.08)",
-          modal: "0 8px 32px rgba(0, 0, 0, 0.12)",
-        },
-
-        // ── Animaciones ───────────────────────────────────────────────────────
-        keyframes: {
-          "fade-in": {
-            "0%": { opacity: "0", transform: "translateY(-4px)" },
-            "100%": { opacity: "1", transform: "translateY(0)" },
-          },
-          "modal-in": {
-            "0%": { opacity: "0", transform: "scale(0.97)" },
-            "100%": { opacity: "1", transform: "scale(1)" },
-          },
-        },
-        animation: {
-          "fade-in": "fade-in 0.15s ease-out",
-          "modal-in": "modal-in 0.2s ease-out",
-        },
-
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -121,6 +78,24 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        dropdown: "0 4px 16px rgba(0, 0, 0, 0.08)",
+        modal: "0 8px 32px rgba(0, 0, 0, 0.12)",
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(-4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "modal-in": {
+          "0%": { opacity: "0", transform: "scale(0.97)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 0.15s ease-out",
+        "modal-in": "modal-in 0.2s ease-out",
       },
     },
   },

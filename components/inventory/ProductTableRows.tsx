@@ -1,4 +1,5 @@
 import { StockBadge } from "@/components/ui/StockBadge";
+import { inventoryTable } from "@/components/inventory/styles";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
 import { databaseFields } from "@/lib/contentNormalizer";
@@ -12,7 +13,7 @@ export function RowInformation({ product }: { product: Product }) {
   const rowContent = databaseFields.map((field) => {
     if (product[field.name] === undefined || product[field.name] === null) {
       return (
-        <td key={field.name} className="px-3 py-3.5 text-brand-text-secondary">
+        <td key={field.name} className={inventoryTable.cellSecondary}>
           N/A
         </td>
       ); // omite este campo
@@ -22,27 +23,27 @@ export function RowInformation({ product }: { product: Product }) {
       return (
         <td
           key={field.name}
-          className="px-3 py-3.5 font-medium text-brand-text-primary"
+          className={inventoryTable.cellEmphasis}
         >
           {product[field.name]}
         </td>
       );
     } else if (field.type === 2) {
       return (
-        <td key={field.name} className="px-3 py-3.5 text-brand-text-primary">
+        <td key={field.name} className={inventoryTable.cellPrimary}>
           {formatPrice(product[field.name])}
         </td>
       );
     } else if (field.type === 3) {
       return (
-        <td key={field.name} className="px-3 py-3.5">
+        <td key={field.name} className={inventoryTable.cell}>
           <StockBadge existencia={product[field.name]} />
         </td>
       );
     }
 
     return (
-      <td key={field.name} className="px-3 py-3.5 text-brand-text-secondary">
+      <td key={field.name} className={inventoryTable.cellSecondary}>
         {product[field.name]}
       </td>
     );
