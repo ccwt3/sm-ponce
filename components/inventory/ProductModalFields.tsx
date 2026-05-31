@@ -1,5 +1,6 @@
 import { databaseFields } from "@/lib/contentNormalizer";
 import type { CreateProductInput } from "@/types";
+import { TypeCombobox } from "@/components/inventory/TypeDropdownMenu";
 
 const inputClass =
   "w-full rounded-md border border-brand-border bg-white px-3 py-2 text-sm text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-1 focus:ring-brand-black";
@@ -12,8 +13,19 @@ export function ProductModalFields({
 }: {
   handleChange: (key: keyof CreateProductInput, value: string | number) => void;
   form: CreateProductInput;
-}) {
-  const inpuitFields = databaseFields.map((field, i) => {
+}) { //todo make it smaller
+  const inputFields = databaseFields.map((field, i) => {
+    if (field.name === "tipo_id") {
+      return (
+        <div className={i === 0 ? "col-span-2" : ""} key={field.name}>
+          <label className="mb-1 block text-xs text-brand-text-secondary">
+            {field.label}
+          </label>
+          <TypeCombobox handleChange={(value) => handleChange(field.name, value)} />
+        </div>
+      );
+    }
+
     return (
       <div className={i === 0 ? "col-span-2" : ""} key={field.name}>
         <label className="mb-1 block text-xs text-brand-text-secondary">
@@ -28,5 +40,5 @@ export function ProductModalFields({
     );
   });
 
-  return inpuitFields;
+  return inputFields;
 }

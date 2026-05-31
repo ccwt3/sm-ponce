@@ -77,6 +77,7 @@ export function ProductModal({
       if (isEdit && modal.product) {
         await onUpdate({ id: modal.product.id, ...form });
       } else {
+        console.log("Creating product with data:", form);
         await onCreate(form);
       }
     } finally {

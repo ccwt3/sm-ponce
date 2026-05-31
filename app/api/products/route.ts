@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import itemsDatabase from "@/database/items";
+import typesDatabase from "@/database/productTypes";
 import { getProductsForDashboard } from "@/lib/products.server";
 import { getCurrentUserId } from "@/lib/server-utils";
 import type { CreateProductInput, Product } from "@/types";
@@ -29,10 +30,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const typeId = await typesDatabase.getTypeOfProductId(body.tipo_id);
+    if (!typeId) {
+      return NextResponse.json(
+        { error: "Tipo de producto no encontrado" },
+        { status: 400 },
+      );
+    }
+
     const userId = await getCurrentUserId();
     const backedProduct = await itemsDatabase.createProduct({
       ...body,
       user_id: userId,
+      tipo_id: typeId.id,
     });
 
     const product: Product = { id: backedProduct.id, ...body };

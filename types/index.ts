@@ -70,3 +70,8 @@ export interface ModalState {
   mode: ModalMode;
   product?: Product; // presente solo en modo "edit"
 }
+
+export interface ProductType {
+  id: string;
+  tipo_de_producto: string;
+}

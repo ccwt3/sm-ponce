@@ -23,6 +23,7 @@ import type {
   UpdateProductInput,
   ProductListResponse,
   ProductResponse,
+  ProductType,
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api"; // 👈 PUNTO DE CONFIGURACIÓN
@@ -96,4 +97,22 @@ export async function updateProduct(input: UpdateProductInput): Promise<Product>
  */
 export async function deleteProduct(id: string): Promise<void> {
   await apiFetch(`/products/${id}`, { method: "DELETE" });
+}
+
+// TIPOS DE PRODUCTOS
+
+// ─── 📌 PUNTO DE ENTRADA 6: Obtener tipos de producto ─────────────────────────
+export async function getProductTypes(): Promise<ProductType[]> {
+  const response = await apiFetch<{ data: ProductType[] }>("/product-types");
+  return response.data;
+}
+
+// ─── 📌 PUNTO DE ENTRADA 7: Crear tipo de producto ───────────────────────────
+export async function createProductType(newProductType: string): Promise<ProductType> {
+  const response = await apiFetch<{ data: ProductType }>(`/product-types`, {
+    method: "POST",
+    body: JSON.stringify(newProductType),
+  });
+  
+  return response.data;
 }
