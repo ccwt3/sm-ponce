@@ -113,6 +113,6 @@ export async function createProductType(newProductType: string): Promise<Product
     method: "POST",
     body: JSON.stringify(newProductType),
   });
-  
+
   return response.data;
 }

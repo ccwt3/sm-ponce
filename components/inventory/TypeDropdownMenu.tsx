@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { useProductTypes } from "@/hooks/useProductTypes";
+import type { ProductType } from "@/types";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,35 +21,62 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-export function TypeCombobox({ handleChange }: { handleChange?: (value: string) => void }) {
-  const { productTypes, handleAddType, refetch } = useProductTypes();
+interface TypeComboboxProps {
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+export function TypeCombobox({ value = "", onValueChange }: TypeComboboxProps) {
+  const { productTypes, error, creating, handleAddType } = useProductTypes();
 
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
 
-  const filteredTypes = productTypes.filter((type) =>
-    type.tipo_de_producto.toLowerCase().includes(search.toLowerCase()),
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const selectedType = productTypes.find(
+    (type) => type.id === value || type.tipo_de_producto === value,
   );
 
-  function addNewType() {
+  const selectedLabel =
+    selectedType?.tipo_de_producto || value || "Selecciona un tipo";
+
+  const filteredTypes = productTypes.filter((type) =>
+    type.tipo_de_producto.toLowerCase().includes(normalizedSearch),
+  );
+
+  const exactMatch = productTypes.some(
+    (type) => type.tipo_de_producto.trim().toLowerCase() === normalizedSearch,
+  );
+
+  const canAddNewType = search.trim().length > 0 && !exactMatch;
+
+  function selectType(type: ProductType) {
+    onValueChange?.(type.tipo_de_producto);
+    setSearch("");
+    setOpen(false);
+  }
+
+  async function addNewType() {
     const newType = search.trim();
 
     if (!newType) return;
-    if (
-      productTypes.some(
-        (type) => type.tipo_de_producto.toLowerCase() === newType.toLowerCase(),
-      )
-    ) {
+
+    const existingType = productTypes.find(
+      (type) => type.tipo_de_producto.toLowerCase() === newType.toLowerCase(),
+    );
+
+    if (existingType) {
+      selectType(existingType);
       return;
     }
 
-    handleAddType({ id: "", tipo_de_producto: newType });
-    refetch(); // Refrescar la lista de tipos después de agregar uno nuevo
-    handleChange?.(newType);
-    setValue(newType);
-    setSearch("");
-    setOpen(false);
+    try {
+      const createdType = await handleAddType(newType);
+      selectType(createdType);
+    } catch {
+      // The hook exposes the user-facing error message.
+    }
   }
 
   return (
@@ -58,9 +86,9 @@ export function TypeCombobox({ handleChange }: { handleChange?: (value: string) 
           variant="default"
           role="combobox"
           className="w-full justify-between"
-          id = {productTypes.find(type => type.tipo_de_producto === value)?.id}
+          aria-expanded={open}
         >
-          {value || "Selecciona un tipo"}
+          {selectedLabel}
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -80,16 +108,13 @@ export function TypeCombobox({ handleChange }: { handleChange?: (value: string) 
                   key={type.id}
                   value={type.tipo_de_producto}
                   onSelect={() => {
-                    setValue(type.tipo_de_producto);
-                    handleChange?.(type.tipo_de_producto);
-                    setSearch("");
-                    setOpen(false);
+                    selectType(type);
                   }}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === type.tipo_de_producto
+                      selectedType?.id === type.id
                         ? "opacity-100"
                         : "opacity-0",
                     )}
@@ -99,17 +124,26 @@ export function TypeCombobox({ handleChange }: { handleChange?: (value: string) 
               ))}
             </CommandGroup>
 
-            {search.trim() && filteredTypes.length === 0 && (
-              <CommandEmpty>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                  onClick={addNewType}
+            {canAddNewType && (
+              <CommandGroup>
+                <CommandItem
+                  value={`add-${search}`}
+                  onSelect={addNewType}
+                  disabled={creating}
+                  className="gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  Agregar "{search}"
-                </Button>
-              </CommandEmpty>
+                  {creating ? "Agregando..." : `Agregar "${search.trim()}"`}
+                </CommandItem>
+              </CommandGroup>
+            )}
+
+            {search.trim() && filteredTypes.length === 0 && !canAddNewType && (
+              <CommandEmpty>No se encontraron tipos.</CommandEmpty>
+            )}
+
+            {error && (
+              <p className="px-3 py-2 text-xs text-brand-danger">{error}</p>
             )}
           </CommandList>
         </Command>

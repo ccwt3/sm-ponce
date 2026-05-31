@@ -13,7 +13,7 @@ export function ProductModalFields({
 }: {
   handleChange: (key: keyof CreateProductInput, value: string | number) => void;
   form: CreateProductInput;
-}) { //todo make it smaller
+}) {
   const inputFields = databaseFields.map((field, i) => {
     if (field.name === "tipo_id") {
       return (
@@ -21,7 +21,10 @@ export function ProductModalFields({
           <label className="mb-1 block text-xs text-brand-text-secondary">
             {field.label}
           </label>
-          <TypeCombobox handleChange={(value) => handleChange(field.name, value)} />
+          <TypeCombobox
+            value={String(form[field.name] ?? "")}
+            onValueChange={(value) => handleChange(field.name, value)}
+          />
         </div>
       );
     }

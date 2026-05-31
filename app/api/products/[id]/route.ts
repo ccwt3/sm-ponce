@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { UpdateProductInput } from "@/types";
+import type { Product, UpdateProductInput } from "@/types";
 import ItemsDatabase from "@/database/items";
+import typesDatabase from "@/database/productTypes";
 
 // ─── GET /api/products/:id ───────────────────────────────────────────────────
 export async function GET(
@@ -19,7 +20,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ data: product });
+    const productType = product.tipo_id
+      ? await typesDatabase.findType(product.tipo_id)
+      : null;
+    const responseProduct: Product = {
+      ...product,
+      tipo_id: productType?.tipo_de_producto ?? product.tipo_id,
+    };
+
+    return NextResponse.json({ data: responseProduct });
   } catch {
     return NextResponse.json(
       { error: "Error al obtener producto" },
@@ -36,17 +45,33 @@ export async function PUT(
   try {
     const { id } = await params;
     const body: Partial<UpdateProductInput> = await req.json();
+    const productType = body.tipo_id
+      ? await typesDatabase.findType(body.tipo_id)
+      : null;
 
-    // 🔌 Prisma:   await prisma.product.update({ where: { id }, data: body })
-    // 🔌 Drizzle:  await db.update(productsTable).set(body).where(eq(productsTable.id, id))
-    // 🔌 Supabase: await supabase.from("products").update(body).eq("id", id).select().single()
+    if (body.tipo_id && !productType) {
+      return NextResponse.json(
+        { error: "Tipo de producto no encontrado" },
+        { status: 400 },
+      );
+    }
 
-    console.log(body);
+    const updated = await ItemsDatabase.updateProduct({
+      ...body,
+      id,
+      ...(productType ? { tipo_id: productType.id } : {}),
+    });
+    const responseType =
+      productType ??
+      (updated.tipo_id
+        ? await typesDatabase.findType(updated.tipo_id)
+        : null);
+    const product: Product = {
+      ...updated,
+      tipo_id: responseType?.tipo_de_producto ?? updated.tipo_id,
+    };
 
-    const updated = await ItemsDatabase.updateProduct({ ...body, id });
-    console.log(updated);
-
-    return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: product });
   } catch {
     return NextResponse.json(
       { error: "Error al actualizar producto" },

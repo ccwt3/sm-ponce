@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const typeId = await typesDatabase.getTypeOfProductId(body.tipo_id);
-    if (!typeId) {
+    const productType = await typesDatabase.findType(body.tipo_id);
+    if (!productType) {
       return NextResponse.json(
         { error: "Tipo de producto no encontrado" },
         { status: 400 },
@@ -42,10 +42,15 @@ export async function POST(req: NextRequest) {
     const backedProduct = await itemsDatabase.createProduct({
       ...body,
       user_id: userId,
-      tipo_id: typeId.id,
+      tipo_id: productType.id,
     });
 
-    const product: Product = { id: backedProduct.id, ...body };
+    const product: Product = {
+      id: backedProduct.id,
+      ...body,
+      tipo_id: productType.tipo_de_producto,
+      user_id: userId,
+    };
 
     return NextResponse.json({ data: product }, { status: 201 });
   } catch {

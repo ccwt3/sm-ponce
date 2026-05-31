@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import typesDatabase from "@/database/productTypes";
-import {getCurrentUserId} from "@/lib/server-utils";
+import { getCurrentUserId } from "@/lib/server-utils";
 
 export async function GET() {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const userId = await getCurrentUserId();
 
     const newType = await typesDatabase.createTypeOfProduct({ newProductType, userId });
-    
+
     return NextResponse.json({ data: newType });
   } catch (error) {
     console.error("Error creating product type:", error);
