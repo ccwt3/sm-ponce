@@ -30,7 +30,6 @@ class ItemsDatabase {
       throw new Error("Error fetching products");
     }
 
-    console.log(products);
     return products as RawProduct[];
   }
 
@@ -65,7 +64,6 @@ class ItemsDatabase {
       throw new Error("Error creating product");
     }
 
-    console.log(product);
     return product;
   }
 
@@ -85,6 +83,21 @@ class ItemsDatabase {
     }
 
     return product;
+  }
+
+  async deleteProduct(id: string) {
+    const supabase = await this._getSupabaseClient(); 
+    const { error } = await supabase
+      .from("producto")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error deleting product:", error);
+      throw new Error("Error deleting product");
+    }
+
+    return id;
   }
 }
 

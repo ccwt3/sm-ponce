@@ -87,12 +87,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    console.log("Eliminando producto con ID:", id);
 
-    // 🔌 Prisma:   await prisma.product.delete({ where: { id } })
-    // 🔌 Drizzle:  await db.delete(productsTable).where(eq(productsTable.id, id))
-    // 🔌 Supabase: await supabase.from("products").delete().eq("id", id)
-
-    return NextResponse.json({ data: { id } });
+    const deletedId = await ItemsDatabase.deleteProduct(id);
+    
+    return NextResponse.json({ data: { id: deletedId } });
   } catch {
     return NextResponse.json(
       { error: "Error al eliminar producto" },
