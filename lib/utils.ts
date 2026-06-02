@@ -30,7 +30,7 @@ export function generateTempId(): string {
 }
 
 export function filterProducts<
-  T extends { nombre: string; modelo: string; tipo: string },
+  T extends { nombre: string; modelo: string | null; tipo_id: string },
 >(products: T[], query: string): T[] {
   const q = query.toLowerCase().trim();
 
@@ -41,7 +41,7 @@ export function filterProducts<
   return products.filter(
     (p) =>
       p.nombre.toLowerCase().includes(q) ||
-      p.modelo.toLowerCase().includes(q) ||
-      p.tipo.toLowerCase().includes(q),
+      (p.modelo ?? "").toLowerCase().includes(q) ||
+      p.tipo_id.toLowerCase().includes(q),
   );
 }

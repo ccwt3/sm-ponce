@@ -9,6 +9,7 @@ class ProductTypesDatabase {
 
   async findType(
     value: string,
+    userId: string,
   ): Promise<ProductType | null> {
     const supabase = await this._getSupabaseClient();
 
@@ -16,6 +17,7 @@ class ProductTypesDatabase {
       .from("tipo")
       .select("id, tipo_de_producto")
       .eq("tipo_de_producto", value)
+      .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
 

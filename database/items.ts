@@ -86,7 +86,7 @@ class ItemsDatabase {
   }
 
   async deleteProduct(id: string) {
-    const supabase = await this._getSupabaseClient(); 
+    const supabase = await this._getSupabaseClient();
     const { error } = await supabase
       .from("producto")
       .delete()
@@ -101,4 +101,6 @@ class ItemsDatabase {
   }
 }
 
-export default new ItemsDatabase();
+const itemsDatabase = new ItemsDatabase();
+
+export default itemsDatabase;

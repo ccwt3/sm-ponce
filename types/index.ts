@@ -6,8 +6,8 @@
 export interface RawProduct {
   id: string;
   nombre: string;
-  modelo: string;
-  medida: string;
+  modelo: string | null;
+  medida: string | null;
   tipo: { tipo_de_producto: string } | null;  // objeto, siempre
   existencia: number;
   precio_proveedor: number;
@@ -19,8 +19,8 @@ export interface RawProduct {
 export interface Product {
   id: string;
   nombre: string;
-  modelo: string;
-  medida: string;
+  modelo: string | null;
+  medida: string | null;
   tipo_id: string;
   existencia: number;
   precio_proveedor: number;

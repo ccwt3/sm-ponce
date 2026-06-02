@@ -4,7 +4,8 @@ import itemsDatabase from "@/database/items";
 import typesDatabase from "@/database/productTypes";
 import { getProductsForDashboard } from "@/lib/products.server";
 import { getCurrentUserId } from "@/lib/server-utils";
-import type { CreateProductInput, Product } from "@/types";
+import { validateCreateProductInput } from "@/lib/validation/products";
+import type { Product } from "@/types";
 
 export async function GET() {
   try {
@@ -21,16 +22,20 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: CreateProductInput = await req.json();
+    const rawBody = await req.json().catch(() => null);
+    const validation = validateCreateProductInput(rawBody);
 
-    if (!body.nombre || !body.modelo) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "nombre y modelo son requeridos" },
+        { error: validation.error },
         { status: 400 },
       );
     }
 
-    const productType = await typesDatabase.findType(body.tipo_id);
+    const body = validation.data;
+    const userId = await getCurrentUserId();
+
+    const productType = await typesDatabase.findType(body.tipo_id, userId);
     if (!productType) {
       return NextResponse.json(
         { error: "Tipo de producto no encontrado" },
@@ -38,7 +43,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userId = await getCurrentUserId();
     const backedProduct = await itemsDatabase.createProduct({
       ...body,
       user_id: userId,

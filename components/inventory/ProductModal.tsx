@@ -29,8 +29,8 @@ const EMPTY_FORM: CreateProductInput = {
 function toProductForm(product: Product): CreateProductInput {
   return {
     nombre: product.nombre,
-    modelo: product.modelo,
-    medida: product.medida,
+    modelo: product.modelo ?? "",
+    medida: product.medida ?? "",
     tipo_id: product.tipo_id,
     existencia: product.existencia,
     precio_proveedor: product.precio_proveedor,

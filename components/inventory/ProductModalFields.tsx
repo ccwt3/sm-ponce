@@ -34,7 +34,8 @@ export function ProductModalFields({
         </label>
         <input
           className={inventoryForm.input}
-          value={form[field.name] || ""}
+          inputMode={field.type === 2 || field.type === 3 ? "decimal" : "text"}
+          value={form[field.name] ?? ""}
           onChange={(e) => handleChange(field.name, e.target.value)}
         />
       </div>

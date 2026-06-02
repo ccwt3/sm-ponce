@@ -529,3 +529,215 @@ por `import/no-anonymous-default-export`.
   mientras el modelo actual usa `tipo_id`.
 - Existen otros `"use client"` legitimos fuera del dashboard, principalmente en
   formularios de auth, theme switcher y componentes UI de Radix.
+
+## Auditoria Actual: Validacion de Inputs
+
+Comparacion auditada: cambios locales actuales contra el ultimo commit
+`HEAD`. Esta seccion revisa exclusivamente el sistema de validacion agregado
+para inputs de productos.
+
+### Resumen Ejecutivo
+
+La validacion agregada mejora el camino feliz de `POST /api/products`: ahora
+rechaza `nombre` vacio y valores no numericos en `existencia`,
+`precio_proveedor` y `precio_publico`. Sin embargo, todavia no se puede
+considerar robusta. El sistema valida parcialmente, no normaliza el payload que
+se persiste, rompe el contrato parcial de `PUT`, y deja fuera campos importantes
+como `modelo`, `medida` y `tipo_id`.
+
+El build de produccion pasa, pero los checks de calidad no estan limpios:
+ESLint falla por imports sin usar y `git diff --check` detecta whitespace nuevo.
+
+### Hallazgos Principales
+
+- **Alta: `PUT /api/products/:id` queda validado como si fuera creacion.**
+  En `app/api/products/[id]/route.ts:48-50`, el body se declara como parcial
+  pero luego se castea a `CreateProductInput` para pasar por
+  `validateProductInput`. Como `validateProductInput` siempre revisa
+  `nombre`, `existencia`, `precio_proveedor` y `precio_publico`, cualquier
+  cliente que mande un update parcial valido puede recibir `400`. El modal
+  actual manda el formulario completo, asi que el camino feliz de UI puede
+  pasar, pero el contrato del route handler y el tipo `UpdateProductInput`
+  quedan inconsistentes. Recomendacion: separar `validateCreateProductInput`
+  de `validateUpdateProductInput`, o usar un schema Zod base con
+  `.partial()` para updates.
+
+- **Alta: los valores numericos se validan, pero no se normalizan antes de
+  persistir.** `numericValidator` transforma a `Number` en
+  `middleware/numericValidator.ts:8`, pero `validateProductInput` solo usa el
+  resultado para detectar errores y luego lo descarta. En
+  `app/api/products/route.ts:51-60` se persiste y se responde con `...body`.
+  Como el formulario cliente envia strings, la API puede seguir guardando o
+  devolviendo strings en campos tipados como number. Recomendacion: que la
+  validacion retorne un payload parseado y que los route handlers usen ese
+  payload validado para `createProduct`, `updateProduct` y la respuesta.
+
+- **Media-alta: precios con decimales son rechazados.**
+  `middleware/numericValidator.ts:7` usa `/^\d+$/`, por lo que `12.50` falla.
+  Eso puede estar bien para `existencia`, pero es restrictivo para
+  `precio_proveedor` y `precio_publico`. Recomendacion: separar reglas por
+  campo: enteros no negativos para inventario y decimal no negativo para
+  precios, o documentar que los precios se guardan como centavos enteros.
+
+- **Media: cobertura de campos incompleta.** `validateProductInput` solo valida
+  `nombre` y tres campos numericos. `modelo` se revisa en `POST` solo con un
+  check de presencia en `app/api/products/route.ts:30`, por lo que `"   "`
+  pasa; `medida` no se valida; `tipo_id` no se valida ni se trimea antes de
+  buscar el tipo. Recomendacion: mover todas las reglas de producto a un schema
+  unico de Zod con `trim`, errores por campo y validacion explicita de
+  `tipo_id`.
+
+- **Media: JSON o shapes invalidos pueden terminar como 500.**
+  Si `req.json()` falla o si el body no es un objeto con los campos esperados,
+  el `catch` general responde `500` con "Error al crear producto" o "Error al
+  actualizar producto". Para errores de input, la API deberia responder `400`
+  con un mensaje accionable. Recomendacion: validar primero el shape raw con
+  Zod y separar errores de parseo/validacion de errores de infraestructura.
+
+- **Media: la capa de validacion esta acoplada a HTTP.**
+  `middleware/formValidator.ts` devuelve `NextResponse` directamente. Eso hace
+  mas dificil reutilizar la validacion fuera de route handlers y obliga a
+  testearla como infraestructura HTTP. Recomendacion: devolver un resultado
+  estructurado, por ejemplo `{ success, data, errors }`, y construir el
+  `NextResponse` en la ruta.
+
+- **Media-baja: ubicacion y nombres confusos.** El directorio `middleware/`
+  contiene utilidades de validacion, no middleware de Next. En un proyecto Next,
+  ese nombre puede generar confusion de responsabilidad. Recomendacion:
+  moverlo a `lib/validation/` o `lib/schemas/` y nombrar los archivos segun el
+  dominio, por ejemplo `product.schema.ts`.
+
+- **Baja: higiene de codigo pendiente.** En `app/api/products/route.ts:9-10`
+  se importan `numericValidator` y `textValidator` pero no se usan. En
+  `app/api/products/[id]/route.ts:49` hay trailing whitespace. Ademas, el import
+  `{validateProductInput}` no sigue el espaciado usado en el resto del repo.
+
+### Buenas Practicas y Modularidad
+
+La decision de usar Zod es positiva: es una herramienta adecuada para validar
+payloads en runtime. El problema es que la implementacion actual lo usa como
+validadores sueltos, no como schema de producto. Eso obliga a repetir reglas,
+perder el payload transformado y mezclar responsabilidades entre validacion,
+route handler y tipos TypeScript.
+
+La forma mas mantenible seria un schema base:
+
+- `productCreateSchema`: valida todos los campos obligatorios de creacion.
+- `productUpdateSchema`: deriva del schema base con `.partial()` y valida solo
+  campos presentes.
+- Un retorno parseado que ya tenga `number` donde el dominio espera `number`.
+- Errores con nombre de campo para que la UI pueda mostrarlos con precision.
+
+### Verificacion Ejecutada
+
+```bash
+npm.cmd run build
+```
+
+Resultado: exitoso.
+
+```bash
+npm.cmd run lint
+```
+
+Resultado: timeout despues de 120s sin entregar diagnostico final.
+
+```bash
+.\node_modules\.bin\eslint.cmd app\api\products\route.ts app\api\products\[id]\route.ts middleware\formValidator.ts middleware\numericValidator.ts middleware\textValidator.ts
+```
+
+Resultado: falla por imports sin usar en `app/api/products/route.ts`.
+
+```bash
+git diff --check HEAD
+```
+
+Resultado: falla por trailing whitespace en
+`app/api/products/[id]/route.ts:49`.
+
+### Prioridad Recomendada
+
+Antes de considerar cerrado el sistema de validacion, conviene corregir en este
+orden: separar schemas de create/update, usar el payload parseado por Zod para
+persistir, diferenciar reglas numericas de existencia vs precios, completar la
+validacion de `modelo`, `medida` y `tipo_id`, y limpiar los errores de lint /
+whitespace. Con eso la validacion pasaria de "filtro inicial" a boundary real de
+API.
+
+## Cambios Aplicados: Robustecimiento de Validacion
+
+Esta seccion documenta los cambios hechos despues de la auditoria anterior para
+cerrar los riesgos detectados en el sistema de validacion.
+
+### Validacion y Contrato de API
+
+- Se reemplazaron los validadores sueltos bajo `middleware/` por schemas de
+  dominio en `lib/validation/`.
+- `lib/validation/products.ts` ahora expone validacion separada para:
+  - creacion de productos;
+  - actualizacion parcial de productos.
+- `POST /api/products` valida el body crudo, rechaza JSON invalido con `400` y
+  usa el payload parseado por Zod para persistir.
+- `PUT /api/products/:id` ya no castea updates parciales a
+  `CreateProductInput`; valida solo los campos presentes y rechaza bodies sin
+  campos validos.
+- Los campos numericos ahora se parsean en el boundary server:
+  - `existencia` exige entero no negativo;
+  - `precio_proveedor` y `precio_publico` aceptan decimales no negativos.
+- `nombre` y `tipo_id` se trimean y son obligatorios.
+- `modelo` y `medida` son tolerantes a vacio, `null` y ausencia, alineados con
+  la nulabilidad de la base de datos.
+- `POST /api/product-types` ahora valida que el tipo sea texto no vacio,
+  trimea el valor y reutiliza el tipo existente si ya esta creado.
+
+### Flujo de Datos y Normalizacion
+
+- El formulario puede seguir enviando strings desde los inputs HTML.
+- La normalizacion numerica ocurre en el servidor, justo antes de persistir,
+  para no depender de coerciones implicitas de Supabase o del navegador.
+- `modelo` y `medida` se tiparon como `string | null` en `Product` y
+  `RawProduct`.
+- El modal convierte `null` a `""` al editar, para que los inputs sigan siendo
+  controlados y comodos de usar.
+- El input del modal usa `?? ""` en vez de `|| ""`, por lo que el valor `0` ya
+  no se renderiza como campo vacio.
+- `typesDatabase.findType` ahora acepta nombre visible o UUID real, lo que
+  conserva el flujo en el que la UI muestra nombres pero la base guarda ids.
+
+### Limpieza y Buenas Practicas
+
+- Se eliminaron imports sin usar en las rutas de productos.
+- Se elimino el `console.log` temporal de `DELETE /api/products/:id`.
+- Se limpio whitespace pendiente.
+- `database/items.ts` ya no exporta una instancia anonima.
+- `tailwind.config.ts` usa import ESM para `tailwindcss-animate`.
+- `eslint.config.mjs` ignora `.next`, `node_modules` y `out`, evitando que el
+  lint analice artefactos generados.
+- `lib/utils.ts` actualiza `filterProducts` para usar `tipo_id` y tolerar
+  `modelo` nullable.
+
+### Verificacion Final
+
+```bash
+npm.cmd run build
+```
+
+Resultado: exitoso.
+
+```bash
+npm.cmd run lint
+```
+
+Resultado: exitoso.
+
+```bash
+git diff --check HEAD
+```
+
+Resultado: sin errores de whitespace. Git solo reporta avisos esperados de
+conversion LF/CRLF en Windows.
+
+Nota: se intento un spot-check directo de Zod con `node --input-type=module`,
+pero el sandbox devolvio `EPERM` al leer un archivo dentro de `node_modules`.
+No se considero bloqueante porque el build de Next y ESLint completo pasaron
+correctamente.
