@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { useProductTypes } from "@/hooks/useProductTypes";
 import type { ProductType } from "@/types";
+import { deleteProductType } from "@/lib/api";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -110,16 +111,30 @@ export function TypeCombobox({ value = "", onValueChange }: TypeComboboxProps) {
                   onSelect={() => {
                     selectType(type);
                   }}
+                  className="group flex items-center justify-between"
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedType?.id === type.id
-                        ? "opacity-100"
-                        : "opacity-0",
-                    )}
-                  />
-                  {type.tipo_de_producto}
+                  <div className="flex items-center">
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedType?.id === type.id
+                          ? "opacity-100"
+                          : "opacity-0",
+                      )}
+                    />
+                    {type.tipo_de_producto}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation(); // evita que active onSelect
+                      deleteProductType(type.id); // tu lógica aquí
+                    }}
+                    className="invisible group-hover:visible rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </CommandItem>
               ))}
             </CommandGroup>

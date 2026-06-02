@@ -1,8 +1,6 @@
+import { getCurrentUserId } from "@/lib/server-utils";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductType } from "@/types";
-
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 class ProductTypesDatabase {
   private async getSupabaseClient() {
@@ -21,25 +19,6 @@ class ProductTypesDatabase {
     }
 
     const supabase = await this.getSupabaseClient();
-
-    if (uuidPattern.test(normalizedValue)) {
-      const { data: typeById, error: idError } = await supabase
-        .from("tipo")
-        .select("id, tipo_de_producto")
-        .eq("id", normalizedValue)
-        .eq("user_id", userId)
-        .limit(1)
-        .maybeSingle();
-
-      if (idError) {
-        console.error("Error fetching product type by id:", idError);
-        throw new Error("Error fetching product type");
-      }
-
-      if (typeById) {
-        return typeById;
-      }
-    }
 
     const { data: type, error } = await supabase
       .from("tipo")
@@ -93,6 +72,21 @@ class ProductTypesDatabase {
     }
 
     return newType;
+  }
+
+  async deleteTypeOfProduct(id: string, userId: string): Promise<void> {
+    const supabase = await this.getSupabaseClient();
+
+    const { error } = await supabase
+      .from("tipo")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error deleting product type:", error);
+      throw new Error("Error deleting product type");
+    }
   }
 }
 
