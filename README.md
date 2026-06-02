@@ -57,22 +57,21 @@ NEXT_PUBLIC_API_URL=
 
 ### `app`
 
-- `app/page.tsx`: pantalla principal del inventario. Es un Client Component que conecta el hook `useInventory` con la tabla, modal, barra de busqueda, navbar y footer.
+- `app/page.tsx`: pantalla principal del inventario. Es un Server Component que carga productos iniciales y delega la interactividad a `InventoryDashboardClient`.
 - `app/api/products/route.ts`: route handler para listar y crear productos.
 - `app/api/products/[id]/route.ts`: route handler para obtener, actualizar y eliminar por id.
 - `app/auth/*`: pantallas y rutas heredadas del starter para login, registro, confirmacion, recuperacion y cambio de password.
-- `app/protected/*`: pagina protegida de ejemplo del starter. Muestra claims del usuario y pasos tutoriales.
-- `app/instruments/page.tsx`: pagina de prueba que consulta una tabla `instruments`; no parece pertenecer al dominio final del inventario.
+- `app/protected/*`: pagina protegida auxiliar. Muestra la sesion actual.
+- `app/instruments/page.tsx`: placeholder de un modulo aun no configurado.
 - `app/layout.tsx`: layout raiz con metadatos de Motorefacciones.
 - `app/globals.css`: Tailwind base/components/utilities.
-- `app/particulars.css`: estilos sueltos no importados en el layout principal; parecen restos o pruebas.
 
 ### `components`
 
 - `components/inventory/ProductTable.tsx`: tabla principal. Recibe productos filtrados y callbacks de editar/borrar.
-- `components/inventory/ProductTableRows.tsx`: renderiza celdas a partir de `databaseFields`.
+- `components/inventory/ProductTableRows.tsx`: renderiza celdas a partir de columnas semanticas de inventario.
 - `components/inventory/ProductModal.tsx`: modal de crear/editar producto. Mantiene estado local del formulario.
-- `components/inventory/ProductModalFields.tsx`: renderiza inputs de formulario a partir de `databaseFields`.
+- `components/inventory/ProductModalFields.tsx`: renderiza inputs de formulario a partir de campos semanticos de inventario.
 - `components/layout/Navbar.tsx`: barra superior de Motorefacciones con menu de configuracion y logout.
 - `components/layout/Footer.tsx`: pie de pagina simple.
 - `components/ui/*`: componentes reutilizables de UI. `StockBadge.tsx` es especifico del inventario; otros son base del starter/shadcn.
@@ -94,7 +93,8 @@ Responsabilidades actuales:
 ### `lib`
 
 - `lib/api.ts`: cliente HTTP del frontend hacia los route handlers de Next.js. Expone `getProducts`, `getProductById`, `createProduct`, `updateProduct` y `deleteProduct`.
-- `lib/contentNormalizer.ts`: define `databaseFields`, la lista central de campos visibles en tabla y formulario.
+- `lib/contentNormalizer.ts`: define campos de formulario y columnas de tabla con nombres semanticos.
+- `lib/products.service.ts`: coordina validacion, resolucion de tipos y normalizacion de productos.
 - `lib/utils.ts`: utilidades de clases, formato de precio MXN, estado de stock, clases de badge y helpers heredados.
 - `lib/supabase/client.ts`: cliente Supabase para Client Components.
 - `lib/supabase/server.ts`: cliente Supabase para Server Components y route handlers con cookies.
@@ -110,8 +110,7 @@ Metodos actuales:
 - `getProductById(id)`: consulta un producto por id.
 - `createProduct(body)`: inserta un producto.
 - `updateProduct(body)`: actualiza un producto.
-
-No existe todavia un metodo real de eliminacion en esta capa.
+- `deleteProduct(id)`: elimina un producto.
 
 ### `types`
 
@@ -179,25 +178,16 @@ const pageSize = 50;
 
 ### Crear
 
-`POST /api/products` valida que existan `nombre` y `modelo`, luego llama a `itemsDatabase.createProduct(body)`.
-
-Riesgo detectado: en `database/items.ts`, `createProduct()` usa `.select().single()`, por lo que Supabase devuelve un objeto, no un arreglo. Sin embargo, el metodo retorna `product[0]`. Esto probablemente rompe la creacion porque `backedProduct.id` quedaria indefinido o lanzaria error.
+`POST /api/products` delega validacion, resolucion de tipo y normalizacion en
+`products.service.ts`, luego persiste a traves de `itemsDatabase.createProduct`.
 
 ### Editar
 
-`PUT /api/products/[id]` recibe el body, combina el `id` de la ruta y llama a `ItemsDatabase.updateProduct()`. El hook reemplaza el producto actualizado en estado local.
-
-Riesgos detectados:
-
-- Hay `console.log` activos en hook, route handler y database.
-- El formulario manda valores numericos como strings porque todos los inputs usan `e.target.value`.
-- No hay validacion de tipos o rangos para existencia/precios antes de actualizar.
+`PUT /api/products/[id]` delega validacion parcial, resolucion opcional de tipo y normalizacion en `products.service.ts`. El hook reemplaza el producto actualizado en estado local.
 
 ### Eliminar
 
-El frontend llama `DELETE /api/products/:id` y hace update optimista quitando la fila de la tabla.
-
-Brecha critica: el route handler de `DELETE` actualmente solo responde `{ data: { id } }`; no llama a Supabase ni a `database/items.ts`. En la UI parece borrarse, pero el registro no se elimina de la base de datos. Al recargar, el producto deberia volver a aparecer.
+El frontend llama `DELETE /api/products/:id` y hace update optimista quitando la fila de la tabla. El route handler delega el borrado en `products.service.ts`, que llama a `database/items.ts`.
 
 ## Supabase y seguridad
 
@@ -219,7 +209,7 @@ RLS: como las consultas a `producto` se hacen con el cliente server usando la pu
 
 - Separacion razonable entre vista (`app/page.tsx`), estado (`useInventory`), cliente HTTP (`lib/api.ts`) y acceso a datos (`database/items.ts`).
 - Los tipos principales estan centralizados en `types/index.ts`.
-- `databaseFields` reduce duplicacion entre tabla y modal.
+- Las configs semanticas de campos reducen duplicacion entre tabla y modal.
 - El filtro de busqueda es simple, local y rapido para datasets pequenos.
 - El badge de stock encapsula reglas visuales y reutiliza helpers de `lib/utils.ts`.
 - El uso de Supabase SSR esta alineado con App Router y cookies.
@@ -227,11 +217,8 @@ RLS: como las consultas a `producto` se hacen con el cliente server usando la pu
 ### Puntos debiles
 
 - Hay comentarios extensos y varios con mojibake/encoding roto, lo que reduce legibilidad.
-- Persisten restos del starter: tutoriales, deploy button, pagina protected, instruments, textos en ingles y componentes no usados.
-- Algunas abstracciones estan a medio camino: `contentNormalizer` centraliza campos, pero usa `type: 0 | 1 | 2 | 3` en lugar de nombres semanticos.
-- `tipo_id` se usa como texto de tipo, no como id, lo que puede confundir API, DB y UI.
-- `ProductModalFields` renderiza todos los inputs como texto; existencia y precios deberian ser numericos.
-- No hay schema validation en los endpoints.
+- Aun quedan componentes heredados del starter fuera del flujo principal.
+- El proxy de autenticacion sigue con la proteccion principal desactivada por decision temporal.
 - No hay confirmacion antes de borrar.
 - No hay tests automatizados.
 - No hay paginacion real, busqueda server-side o estrategia para inventarios grandes.
@@ -242,36 +229,20 @@ RLS: como las consultas a `producto` se hacen con el cliente server usando la pu
 
    Agregar `deleteProduct(id)` en `database/items.ts` y llamarlo desde `DELETE /api/products/[id]`.
 
-2. Corregir `createProduct()`.
-
-   Si se usa `.single()`, retornar `product` y no `product[0]`.
-
-3. Normalizar tipos numericos.
-
-   Convertir `existencia`, `precio_proveedor` y `precio_publico` a numeros antes de enviar a la API. Idealmente usar `type="number"` y validacion.
-
-4. Aclarar el modelo de `tipo`.
-
-   Separar `tipo_id` real de una propiedad visible como `tipo_nombre` o `tipo`.
-
-5. Ajustar busqueda al requerimiento exacto.
+2. Ajustar busqueda al requerimiento exacto.
 
    Si la prioridad `nombre -> modelo -> tipo` importa, ordenar resultados por prioridad de coincidencia. Si solo importa encontrar por esos campos, quitar `medida` de `searchFields` o confirmar que tambien debe buscarse.
 
-6. Proteger la ruta principal.
+3. Proteger la ruta principal.
 
    Si `/` es el inventario de produccion, no deberia estar excluida del proxy de autenticacion.
 
 ## Recomendaciones de limpieza
 
-- Eliminar o aislar archivos del starter que no formen parte del producto final: tutoriales, deploy, instruments y textos de ejemplo.
+- Eliminar o aislar componentes restantes del starter que no formen parte del producto final.
 - Cambiar comentarios decorativos por comentarios cortos y utiles.
 - Corregir encoding de archivos con caracteres rotos.
-- Reemplazar `databaseFields.type` numerico por una union legible, por ejemplo:
-
-```ts
-type FieldKind = "text" | "primary" | "currency" | "stock";
-```
+- Mantener las configs de campos con nombres semanticos, no codigos numericos.
 
 - Mover reglas de campos editables a una definicion tipada que incluya input type, label, formatter y parser.
 - Agregar validacion con un schema compartido para create/update.

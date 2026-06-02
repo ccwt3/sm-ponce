@@ -7,6 +7,7 @@ import { validateProductTypeInput } from "@/lib/validation/productTypes";
 export async function GET() {
   try {
     const types = await typesDatabase.getAllTypesOfProducts();
+
     return NextResponse.json({ data: types });
   } catch (error) {
     console.error("Error fetching product types:", error);
@@ -32,7 +33,6 @@ export async function POST(request: NextRequest) {
 
     const newProductType = validation.data;
     const userId = await getCurrentUserId();
-    
     const existingType = await typesDatabase.findType(newProductType, userId);
 
     if (existingType) {

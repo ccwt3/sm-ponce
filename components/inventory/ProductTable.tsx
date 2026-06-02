@@ -5,7 +5,7 @@ import {
   inventoryState,
   inventoryTable,
 } from "@/components/inventory/styles";
-import { databaseFields } from "@/lib/contentNormalizer";
+import { productTableColumns } from "@/lib/contentNormalizer";
 
 interface ProductTableProps {
   products: Product[];
@@ -14,9 +14,9 @@ interface ProductTableProps {
 }
 
 const editedFields = [
-  ...databaseFields,
-  { name: "acciones", label: "Acciones", type: 0 },
-]; // agregando la columna acciones al final de todo los campos modulares
+  ...productTableColumns,
+  { key: "actions", label: "Acciones", kind: "actions" },
+] as const;
 
 export function ProductTable({
   products,
@@ -38,7 +38,7 @@ export function ProductTable({
           <tr className="border-b border-border">
             {editedFields.map((col) => (
               <th
-                key={col.name}
+                key={col.key}
                 className={inventoryTable.heading}
               >
                 {col.label}

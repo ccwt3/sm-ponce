@@ -7,16 +7,30 @@ type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+const fieldLabels: Record<string, string> = {
+  existencia: "Existencia",
+  medida: "Medida",
+  modelo: "Modelo",
+  nombre: "Nombre",
+  precio_proveedor: "Precio proveedor",
+  precio_publico: "Precio publico",
+  tipo_id: "Tipo de producto",
+};
+
+function fieldLabel(field: string): string {
+  return fieldLabels[field] ?? field;
+}
+
 const requiredText = (field: string) =>
   z
-    .string({ error: `${field === "tipo_id" ? "Tipo de producto" : field} debe ser texto` })
+    .string({ error: `${fieldLabel(field)} debe ser texto` })
     .trim()
-    .min(1, { message: `${field === "tipo_id" ? "Tipo de producto" : field} no puede estar vacio` });
+    .min(1, { message: `${fieldLabel(field)} no puede estar vacio` });
 
 const nullableText = (field: string) =>
   z
     .union([
-      z.string({ error: `${field === "tipo_id" ? "Tipo de producto" : field} debe ser texto` }),
+      z.string({ error: `${fieldLabel(field)} debe ser texto` }),
       z.null(),
       z.undefined(),
     ])
@@ -42,16 +56,16 @@ const requiredNumber = (field: string) =>
   z.preprocess(
     parseNumberInput,
     z
-      .number({ error: `${field === "tipo_id" ? "Tipo de producto" : field} debe ser numerico` })
-      .finite({ message: `${field === "tipo_id" ? "Tipo de producto" : field} debe ser numerico` })
-      .nonnegative({ message: `${field === "tipo_id" ? "Tipo de producto" : field} no puede ser negativo` }),
+      .number({ error: `${fieldLabel(field)} debe ser numerico` })
+      .finite({ message: `${fieldLabel(field)} debe ser numerico` })
+      .nonnegative({ message: `${fieldLabel(field)} no puede ser negativo` }),
   );
 
 const requiredInteger = (field: string) =>
   requiredNumber(field).pipe(
     z
       .number()
-      .int({ message: `${field === "tipo_id" ? "Tipo de producto" : field} debe ser un numero entero` }),
+      .int({ message: `${fieldLabel(field)} debe ser un numero entero` }),
   );
 
 const productCreateSchema = z.object({

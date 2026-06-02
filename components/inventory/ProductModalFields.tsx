@@ -1,21 +1,35 @@
-import { databaseFields } from "@/lib/contentNormalizer";
+import { productFormFields } from "@/lib/contentNormalizer";
 import type { CreateProductInput } from "@/types";
 import { TypeCombobox } from "@/components/inventory/TypeDropdownMenu";
 import { inventoryForm } from "@/components/inventory/styles";
 
-// Se renderizan los campos del formulario
-// No tiene logica mas alla del formulario en si.
+const inputModeByKind = {
+  decimal: "decimal",
+  integer: "numeric",
+  text: "text",
+} as const;
+
+function fieldContainerClass(field: object) {
+  return "span" in field && field.span === "full" ? "col-span-2" : "";
+}
+
 export function ProductModalFields({
   handleChange,
   form,
 }: {
-  handleChange: (key: keyof CreateProductInput, value: string | number) => void;
+  handleChange: (
+    key: keyof CreateProductInput,
+    value: string | number | null,
+  ) => void;
   form: CreateProductInput;
 }) {
-  const inputFields = databaseFields.map((field, i) => {
-    if (field.name === "tipo_id") {
+  const inputFields = productFormFields.map((field) => {
+    if (field.kind === "productType") {
       return (
-        <div className={i === 0 ? "col-span-2" : ""} key={field.name}>
+        <div
+          className={fieldContainerClass(field)}
+          key={field.name}
+        >
           <label className={inventoryForm.label}>
             {field.label}
           </label>
@@ -28,13 +42,16 @@ export function ProductModalFields({
     }
 
     return (
-      <div className={i === 0 ? "col-span-2" : ""} key={field.name}>
+      <div
+        className={fieldContainerClass(field)}
+        key={field.name}
+      >
         <label className={inventoryForm.label}>
           {field.label}
         </label>
         <input
           className={inventoryForm.input}
-          inputMode={field.type === 2 || field.type === 3 ? "decimal" : "text"}
+          inputMode={inputModeByKind[field.kind]}
           value={form[field.name] ?? ""}
           onChange={(e) => handleChange(field.name, e.target.value)}
         />

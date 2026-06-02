@@ -49,6 +49,7 @@ export function ProductModal({
   const [saving, setSaving] = useState(false);
 
   const isEdit = modal.mode === "edit";
+  const canSubmit = Boolean(form.nombre.trim());
 
   useEffect(() => {
     if (modal.mode === "edit" && modal.product) {
@@ -63,12 +64,15 @@ export function ProductModal({
     return null;
   }
 
-  const handleChange = (key: keyof CreateProductInput, value: string | number) => {
+  const handleChange = (
+    key: keyof CreateProductInput,
+    value: string | number | null,
+  ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim()) {
+    if (!canSubmit) {
       return;
     }
 
@@ -108,7 +112,7 @@ export function ProductModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !form.nombre.trim()}
+            disabled={saving || !canSubmit}
             className={inventoryButton.modalPrimary}
           >
             {saving ? "Guardando..." : "Guardar"}

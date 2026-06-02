@@ -1,19 +1,19 @@
-// ─── Product ────────────────────────────────────────────────────────────────
-
-//! HARDCODED INDICES
-
-// Lo que devuelve Supabase (raw)
-export interface RawProduct {
+export interface ProductRow {
   id: string;
   nombre: string;
   modelo: string | null;
   medida: string | null;
-  tipo: { tipo_de_producto: string } | null;  // objeto, siempre
+  tipo_id: string;
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;
   creadoEn?: string;
   actualizadoEn?: string;
+  user_id?: string;
+}
+
+export interface RawProduct extends ProductRow {
+  tipo: { tipo_de_producto: string } | null;
 }
 
 export interface Product {
@@ -25,18 +25,22 @@ export interface Product {
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;
-  creadoEn?: string; // ISO date string
+  creadoEn?: string;
   actualizadoEn?: string;
-  user_id?: string; // ID del usuario que creó o actualizó el producto
+  user_id?: string;
 }
 
-// Payload para crear un producto (sin id ni timestamps)
-export type CreateProductInput = Omit<Product, "id" | "creadoEn" | "actualizadoEn">;
+export type ProductWriteInput = Omit<
+  ProductRow,
+  "id" | "creadoEn" | "actualizadoEn"
+>;
 
-// Payload para actualizar (todos los campos opcionales excepto id)
+export type CreateProductInput = Omit<
+  Product,
+  "id" | "creadoEn" | "actualizadoEn"
+>;
+
 export type UpdateProductInput = Partial<CreateProductInput> & { id: string };
-
-// ─── API Responses ───────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
   data: T;
@@ -45,8 +49,6 @@ export interface ApiResponse<T> {
 
 export type ProductListResponse = ApiResponse<Product[]>;
 export type ProductResponse = ApiResponse<Product>;
-
-// ─── UI / Table ─────────────────────────────────────────────────────────────
 
 export type SortField = keyof Pick<
   Product,
@@ -62,13 +64,11 @@ export interface TableSort {
 
 export type StockStatus = "ok" | "low" | "empty";
 
-// ─── Modal ───────────────────────────────────────────────────────────────────
-
 export type ModalMode = "create" | "edit" | "closed";
 
 export interface ModalState {
   mode: ModalMode;
-  product?: Product; // presente solo en modo "edit"
+  product?: Product;
 }
 
 export interface ProductType {

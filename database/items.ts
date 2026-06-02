@@ -1,28 +1,36 @@
 import { createClient } from "@/lib/supabase/server";
-import { Product } from "@/types";
-import type { CreateProductInput, RawProduct } from "@/types";
+import type { ProductRow, ProductWriteInput, RawProduct } from "@/types";
+
+const DEFAULT_PAGE = 0;
+const DEFAULT_PAGE_SIZE = 50;
+
+const productSelect = `
+  *,
+  tipo (
+    tipo_de_producto
+  )
+`;
+
+interface ProductPageOptions {
+  page?: number;
+  pageSize?: number;
+}
 
 class ItemsDatabase {
-  async _getSupabaseClient() {
+  private async getSupabaseClient() {
     const supabase = await createClient();
     return supabase;
   }
 
-  async getAllProducts(): Promise<RawProduct[]> {
-    const supabase = await this._getSupabaseClient();
-    const page = 0;
-    const pageSize = 50;
+  async getAllProducts({
+    page = DEFAULT_PAGE,
+    pageSize = DEFAULT_PAGE_SIZE,
+  }: ProductPageOptions = {}): Promise<RawProduct[]> {
+    const supabase = await this.getSupabaseClient();
 
     const { data: products, error } = await supabase
       .from("producto")
-      .select(
-        `
-        *,
-        tipo (
-        tipo_de_producto
-        )
-      `,
-      )
+      .select(productSelect)
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) {
@@ -33,14 +41,14 @@ class ItemsDatabase {
     return products as RawProduct[];
   }
 
-  async getProductById(id: string): Promise<Product | null> {
-    const supabase = await this._getSupabaseClient();
+  async getProductById(id: string): Promise<RawProduct | null> {
+    const supabase = await this.getSupabaseClient();
 
     const { data: product, error } = await supabase
       .from("producto")
-      .select("*")
+      .select(productSelect)
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error fetching product by ID:", error);
@@ -50,8 +58,8 @@ class ItemsDatabase {
     return product;
   }
 
-  async createProduct(body: CreateProductInput) {
-    const supabase = await this._getSupabaseClient();
+  async createProduct(body: ProductWriteInput): Promise<ProductRow> {
+    const supabase = await this.getSupabaseClient();
 
     const { data: product, error } = await supabase
       .from("producto")
@@ -67,13 +75,16 @@ class ItemsDatabase {
     return product;
   }
 
-  async updateProduct(body: Partial<CreateProductInput> & { id: string }) {
-    const supabase = await this._getSupabaseClient();
+  async updateProduct(
+    body: Partial<ProductWriteInput> & { id: string },
+  ): Promise<ProductRow> {
+    const supabase = await this.getSupabaseClient();
+    const { id, ...updates } = body;
 
     const { data: product, error } = await supabase
       .from("producto")
-      .update(body)
-      .eq("id", body.id)
+      .update(updates)
+      .eq("id", id)
       .select()
       .single();
 
@@ -86,7 +97,7 @@ class ItemsDatabase {
   }
 
   async deleteProduct(id: string) {
-    const supabase = await this._getSupabaseClient();
+    const supabase = await this.getSupabaseClient();
     const { error } = await supabase
       .from("producto")
       .delete()

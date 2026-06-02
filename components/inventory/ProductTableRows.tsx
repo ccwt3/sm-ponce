@@ -2,49 +2,54 @@ import { StockBadge } from "@/components/ui/StockBadge";
 import { inventoryTable } from "@/components/inventory/styles";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
-import { databaseFields } from "@/lib/contentNormalizer";
+import { productTableColumns } from "@/lib/contentNormalizer";
 
-//type 1 is for important fields
-//type 0 is for normal fields
-//type 2 is for numeric fields that need formatting (like price)
-//type 3 is for stock that needs a badge (decoration)
+function emptyCell(key: string) {
+  return (
+    <td key={key} className={inventoryTable.cellSecondary}>
+      N/A
+    </td>
+  );
+}
 
 export function RowInformation({ product }: { product: Product }) {
-  const rowContent = databaseFields.map((field) => {
-    if (product[field.name] === undefined || product[field.name] === null) {
-      return (
-        <td key={field.name} className={inventoryTable.cellSecondary}>
-          N/A
-        </td>
-      ); // omite este campo
+  const rowContent = productTableColumns.map((column) => {
+    const value = product[column.key];
+
+    if (value === undefined || value === null) {
+      return emptyCell(column.key);
     }
 
-    if (field.type === 1) {
+    if (column.kind === "emphasis") {
       return (
         <td
-          key={field.name}
+          key={column.key}
           className={inventoryTable.cellEmphasis}
         >
-          {product[field.name]}
+          {value}
         </td>
       );
-    } else if (field.type === 2) {
+    }
+
+    if (column.kind === "price") {
       return (
-        <td key={field.name} className={inventoryTable.cellPrimary}>
-          {formatPrice(product[field.name])}
+        <td key={column.key} className={inventoryTable.cellPrimary}>
+          {formatPrice(Number(value))}
         </td>
       );
-    } else if (field.type === 3) {
+    }
+
+    if (column.kind === "stock") {
       return (
-        <td key={field.name} className={inventoryTable.cell}>
-          <StockBadge existencia={product[field.name]} />
+        <td key={column.key} className={inventoryTable.cell}>
+          <StockBadge existencia={Number(value)} />
         </td>
       );
     }
 
     return (
-      <td key={field.name} className={inventoryTable.cellSecondary}>
-        {product[field.name]}
+      <td key={column.key} className={inventoryTable.cellSecondary}>
+        {value}
       </td>
     );
   });
