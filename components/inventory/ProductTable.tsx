@@ -10,7 +10,7 @@ import { productTableColumns } from "@/lib/contentNormalizer";
 interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
-  onDelete: (id: string) => void;
+  onRequestDelete: (product: Product) => void;
 }
 
 const editedFields = [
@@ -21,7 +21,7 @@ const editedFields = [
 export function ProductTable({
   products,
   onEdit,
-  onDelete,
+  onRequestDelete,
 }: ProductTableProps) {
   if (products.length === 0) {
     return (
@@ -63,7 +63,7 @@ export function ProductTable({
                     Editar
                   </button>
                   <button
-                    onClick={() => onDelete(product.id)}
+                    onClick={() => onRequestDelete(product)}
                     className={inventoryButton.dangerTable}
                   >
                     Borrar

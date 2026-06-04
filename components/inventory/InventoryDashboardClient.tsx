@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Search } from "lucide-react";
 
+import { ConfirmDeleteDialog } from "@/components/inventory/ConfirmDeleteDialog";
 import { ProductModal } from "@/components/inventory/ProductModal";
 import { ProductTable } from "@/components/inventory/ProductTable";
 import {
@@ -36,6 +38,27 @@ export function InventoryDashboardClient({
     openEdit,
     closeModal,
   } = useInventory({ initialError, initialProducts });
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
+  const closeDeleteDialog = () => {
+    setProductToDelete(null);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) {
+      return;
+    }
+
+    setIsDeletingProduct(true);
+
+    try {
+      await handleDelete(productToDelete.id);
+      closeDeleteDialog();
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
 
   return (
     <>
@@ -75,10 +98,23 @@ export function InventoryDashboardClient({
           <ProductTable
             products={products}
             onEdit={openEdit}
-            onDelete={handleDelete}
+            onRequestDelete={setProductToDelete}
           />
         )}
       </main>
+
+      <ConfirmDeleteDialog
+        open={productToDelete !== null}
+        entityLabel="producto"
+        itemName={productToDelete?.nombre ?? ""}
+        isDeleting={isDeletingProduct}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDeleteDialog();
+          }
+        }}
+        onConfirm={confirmDeleteProduct}
+      />
 
       <ProductModal
         modal={modal}

@@ -64,7 +64,9 @@ export async function DELETE(
     const deletedId = await deleteProduct(id);
 
     return NextResponse.json({ data: { id: deletedId } });
-  } catch {
+  } catch (error) {
+    
+    console.error("Error deleting product:", error);
     return NextResponse.json(
       { error: "Error al eliminar producto" },
       { status: 500 },

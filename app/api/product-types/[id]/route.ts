@@ -16,6 +16,7 @@ export async function DELETE(
       message: `Tipo de producto con ID ${id} eliminado`,
     });
   } catch (error) {
+    console.error("Error deleting product type:", error);
     return NextResponse.json(
       { error: "Error al eliminar tipo de producto" },
       { status: 500 },
