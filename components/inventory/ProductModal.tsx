@@ -14,6 +14,7 @@ interface ProductModalProps {
   onClose: () => void;
   onCreate: (input: CreateProductInput) => Promise<void>;
   onUpdate: (input: UpdateProductInput) => Promise<void>;
+  onValidationError: (message: string) => void;
 }
 
 const EMPTY_FORM: CreateProductInput = {
@@ -44,6 +45,7 @@ export function ProductModal({
   onClose,
   onCreate,
   onUpdate,
+  onValidationError,
 }: ProductModalProps) {
   const [form, setForm] = useState<CreateProductInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -73,6 +75,7 @@ export function ProductModal({
 
   const handleSubmit = async () => {
     if (!canSubmit) {
+      onValidationError("Nombre no puede estar vacio");
       return;
     }
 
@@ -112,7 +115,7 @@ export function ProductModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !canSubmit}
+            disabled={saving}
             className={inventoryButton.modalPrimary}
           >
             {saving ? "Guardando..." : "Guardar"}

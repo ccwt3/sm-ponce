@@ -23,6 +23,10 @@ interface UseInventoryOptions {
 
 const searchFields = ["nombre", "medida", "modelo", "tipo_id"] as const;
 
+function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export function useInventory({
   initialError = null,
   initialProducts,
@@ -32,7 +36,16 @@ export function useInventory({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(!hasInitialProducts && !initialError);
   const [error, setError] = useState<string | null>(initialError);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
+
+  const showActionError = useCallback((message: string) => {
+    setActionError(message);
+  }, []);
+
+  const dismissActionError = useCallback(() => {
+    setActionError(null);
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -42,7 +55,7 @@ export function useInventory({
       const data = await getProducts();
       setProducts(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(getErrorMessage(err, "Error desconocido"));
     } finally {
       setLoading(false);
     }
@@ -70,39 +83,39 @@ export function useInventory({
 
   const handleCreate = async (input: CreateProductInput) => {
     try {
-      setError(null);
+      dismissActionError();
       const created = await createProduct(input);
       setProducts((prev) => [...prev, created]);
       setModal({ mode: "closed" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      showActionError(getErrorMessage(err, "Error al crear"));
     }
   };
 
   const handleUpdate = async (input: UpdateProductInput) => {
     try {
-      setError(null);
+      dismissActionError();
       const updated = await updateProduct(input);
       setProducts((prev) =>
         prev.map((product) => (product.id === updated.id ? updated : product)),
       );
       setModal({ mode: "closed" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al actualizar");
+      showActionError(getErrorMessage(err, "Error al actualizar"));
     }
   };
 
   const handleDelete = async (id: string) => {
     const previousProducts = products;
 
-    setError(null);
+    dismissActionError();
     setProducts((prev) => prev.filter((product) => product.id !== id));
 
     try {
       await deleteProduct(id);
     } catch (err) {
       setProducts(previousProducts);
-      setError(err instanceof Error ? err.message : "Error al eliminar");
+      showActionError(getErrorMessage(err, "Error al eliminar"));
     }
   };
 
@@ -117,10 +130,13 @@ export function useInventory({
     setSearch,
     loading,
     error,
+    actionError,
     modal,
     handleCreate,
     handleUpdate,
     handleDelete,
+    showActionError,
+    dismissActionError,
     openCreate,
     openEdit,
     closeModal,

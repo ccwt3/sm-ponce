@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 
 import { ConfirmDeleteDialog } from "@/components/inventory/ConfirmDeleteDialog";
+import { FloatingErrorNotice } from "@/components/inventory/FloatingErrorNotice";
 import { ProductModal } from "@/components/inventory/ProductModal";
 import { ProductTable } from "@/components/inventory/ProductTable";
 import {
@@ -30,10 +31,13 @@ export function InventoryDashboardClient({
     setSearch,
     loading,
     error,
+    actionError,
     modal,
     handleCreate,
     handleUpdate,
     handleDelete,
+    showActionError,
+    dismissActionError,
     openCreate,
     openEdit,
     closeModal,
@@ -62,6 +66,11 @@ export function InventoryDashboardClient({
 
   return (
     <>
+      <FloatingErrorNotice
+        message={actionError}
+        onDismiss={dismissActionError}
+      />
+
       <main className="flex-1 p-6">
         <div className="mb-5 flex items-center gap-3">
           <div className="relative">
@@ -121,6 +130,7 @@ export function InventoryDashboardClient({
         onClose={closeModal}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
+        onValidationError={showActionError}
       />
     </>
   );
