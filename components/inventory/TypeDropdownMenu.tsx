@@ -81,7 +81,7 @@ export function TypeCombobox({ value = "", onValueChange }: TypeComboboxProps) {
       const createdType = await handleAddType(newType);
       selectType(createdType);
     } catch {
-      // The hook exposes the user-facing error message.
+      // El hook expone el mensaje de error para la interfaz.
     }
   }
 

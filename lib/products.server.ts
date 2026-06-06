@@ -1,4 +1,1 @@
-export {
-  getProductsForDashboard,
-  normalizeProduct,
-} from "@/lib/products.service";
+export { getProductsForDashboard } from "@/lib/products.service";

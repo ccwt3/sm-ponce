@@ -12,7 +12,7 @@ export async function GET() {
 
     return NextResponse.json({ data: types });
   } catch (error) {
-    console.error("Error fetching product types:", error);
+    console.error("Error al obtener tipos de producto:", error);
 
     return errorResponse(error, "Error al obtener tipos de productos");
   }
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: newType });
   } catch (error) {
-    console.error("Error creating product type:", error);
+    console.error("Error al crear tipo de producto:", error);
     return errorResponse(error, "Error al crear tipo de producto");
   }
 }

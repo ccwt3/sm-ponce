@@ -37,8 +37,8 @@ class ItemsDatabase {
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) {
-      console.error("Error fetching products:", error);
-      throw new Error("Error fetching products");
+      console.error("Error al obtener productos:", error);
+      throw new Error("Error al obtener productos");
     }
 
     return products as RawProduct[];
@@ -58,8 +58,8 @@ class ItemsDatabase {
       .maybeSingle();
 
     if (error) {
-      console.error("Error fetching product by ID:", error);
-      throw new Error("Error fetching product by ID");
+      console.error("Error al obtener producto por ID:", error);
+      throw new Error("Error al obtener producto por ID");
     }
 
     return product;
@@ -75,8 +75,8 @@ class ItemsDatabase {
       .single();
 
     if (error) {
-      console.error("Error creating product:", error);
-      throw new Error("Error creating product");
+      console.error("Error al crear producto:", error);
+      throw new Error("Error al crear producto");
     }
 
     return product;
@@ -98,8 +98,8 @@ class ItemsDatabase {
       .maybeSingle();
 
     if (error) {
-      console.error("Error updating product:", error);
-      throw new Error("Error updating product");
+      console.error("Error al actualizar producto:", error);
+      throw new Error("Error al actualizar producto");
     }
 
     return product;
@@ -116,8 +116,8 @@ class ItemsDatabase {
       .maybeSingle();
 
     if (error) {
-      console.error("Error deleting product:", error);
-      throw new Error("Error deleting product");
+      console.error("Error al eliminar producto:", error);
+      throw new Error("Error al eliminar producto");
     }
 
     return product?.id ?? null;

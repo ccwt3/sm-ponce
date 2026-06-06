@@ -741,3 +741,253 @@ Nota: se intento un spot-check directo de Zod con `node --input-type=module`,
 pero el sandbox devolvio `EPERM` al leer un archivo dentro de `node_modules`.
 No se considero bloqueante porque el build de Next y ESLint completo pasaron
 correctamente.
+
+## Auditoria de Limpieza de Codebase: app, components, database, hooks, lib y types
+
+Fecha de revision: 2026-06-06.
+
+Esta seccion documenta una revision estatica enfocada en limpieza, calidad,
+modularidad, legibilidad y mantenibilidad. No se modifico codigo funcional en
+esta auditoria; solo se registran hallazgos y recomendaciones.
+
+### Verificacion Ejecutada
+
+```bash
+npm.cmd run lint
+```
+
+Resultado: exitoso.
+
+```bash
+npm.cmd run build
+```
+
+Resultado: exitoso.
+
+Conclusion tecnica: no se detectaron imports rotos ni errores de compilacion.
+La deuda encontrada es principalmente de limpieza, restos de starter,
+contratos confusos y exports no usados. El proyecto no tiene activado
+`noUnusedLocals` ni `noUnusedParameters` en `tsconfig.json`, y ESLint usa la
+configuracion base de Next; por eso algunos exports o archivos sin uso pueden
+pasar lint/build sin advertencias.
+
+### Componentes o Archivos Locales Sin Referencia Directa
+
+Cruce de imports locales dentro de `app`, `components`, `database`, `hooks`,
+`lib`, `types` y `proxy.ts` marco estos archivos como no usados por el flujo
+actual:
+
+- `components/deploy-button.tsx`
+- `components/hero.tsx`
+- `components/tutorial/connect-supabase-steps.tsx`
+- `components/tutorial/fetch-data-steps.tsx`
+- `components/tutorial/sign-up-user-steps.tsx`
+
+Archivos usados solo por esos restos:
+
+- `components/next-logo.tsx`, usado por `components/hero.tsx`.
+- `components/supabase-logo.tsx`, usado por `components/hero.tsx`.
+- `components/tutorial/code-block.tsx`, usado por `fetch-data-steps.tsx`.
+- `components/tutorial/tutorial-step.tsx`, usado por los pasos tutorial.
+
+Recomendacion: si el producto ya no necesita la pantalla/tutorial del starter
+Supabase, estos archivos son candidatos claros para eliminacion en una tarea de
+limpieza dedicada.
+
+### Restos del Starter Supabase/Next
+
+- `components/deploy-button.tsx` conserva URL de Vercel hacia
+  `nextjs-with-supabase`.
+- `components/hero.tsx` conserva texto "Supabase and Next.js Starter Template".
+- `components/tutorial/*` conserva instrucciones genericas de Supabase.
+- `components/env-var-warning.tsx` sigue en ingles y esta acoplado al layout
+  legacy de `/protected`.
+- `components/auth-button.tsx`, `components/logout-button.tsx` y
+  `components/theme-switcher.tsx` estan usados por `/protected`, pero no por el
+  flujo principal de inventario.
+- `app/protected/page.tsx` es una pagina diagnostica que imprime claims de la
+  sesion; es util durante desarrollo, pero no parece parte del producto final.
+
+Recomendacion: decidir si `/protected` seguira existiendo como ruta interna de
+debug o si se eliminara junto con sus componentes legacy. Si se conserva,
+conviene renombrarla o aislarla como herramienta de diagnostico.
+
+### Placeholders y Codigo Temporal
+
+- `app/instruments/page.tsx` es una ruta placeholder: "Modulo de instrumentos
+  sin configurar".
+- `components/layout/Footer.tsx` renderiza links `Soporte`, `Privacidad` y
+  `Contacto` con `href="#"`.
+- `components/layout/NavbarMenu.tsx` conserva `console.log("-> ir a
+  configuracion")` en la accion de Configuracion.
+- `components/layout/NavbarMenu.tsx` usa el texto `...` como trigger visual del
+  menu. Funciona, pero es menos semantico que un icono de menu con estado claro.
+- `components/inventory/ProductTableRows.tsx` muestra `N/A` para valores
+  `null` o `undefined`; es valido, pero mezcla idioma ingles dentro de una UI
+  mayormente en espanol.
+
+Recomendacion: reemplazar placeholders por rutas reales o deshabilitarlas hasta
+que exista funcionalidad. Quitar logs temporales antes de produccion.
+
+### Utilidades y Tipos No Usados o Sobregeneralizados
+
+- `lib/utils.ts` exporta `generateTempId()`, pero no hay referencias actuales.
+- `lib/utils.ts` exporta `filterProducts()`, pero el filtro real vive dentro de
+  `hooks/useInventory.ts`.
+- `types/index.ts` conserva `SortField`, `SortDirection` y `TableSort`, pero no
+  hay ordenamiento implementado en la UI actual.
+- `lib/api.ts` exporta `getProductById()`, pero el flujo cliente actual no lo
+  consume.
+- `lib/products.server.ts` re-exporta `normalizeProduct`, pero el uso actual
+  desde `app/page.tsx` solo necesita `getProductsForDashboard`.
+- `lib/validation/products.ts` exporta `ProductInput` y `ProductUpdateInput`;
+  actualmente se usan solo como tipos de retorno internos del mismo archivo.
+
+Recomendacion: en una limpieza futura, borrar exports no usados o hacerlos
+internos. Si son intencionales para features proximas, documentarlo cerca del
+tipo o feature para evitar que parezcan deuda.
+
+### Contratos de Dominio Confusos
+
+- `Product.tipo_id` representa el nombre visible del tipo en la UI, pero en la
+  base de datos `tipo_id` representa el UUID real. Este doble significado sigue
+  siendo la mayor deuda de modelo.
+- `ProductWriteInput` usa el shape de `ProductRow`, mientras `Product` usa el
+  shape normalizado para UI. La frontera entre "row de base" y "modelo de UI"
+  existe, pero no esta totalmente separada.
+- `CreateProductInput` deriva de `Product` y por eso permite `user_id`
+  opcional. En runtime la validacion del servidor controla el payload, pero a
+  nivel TypeScript el formulario puede cargar y enviar `user_id` en edicion.
+- `ProductModal.toProductForm()` conserva `user_id` al pasar un producto al
+  formulario, aunque ese campo no deberia ser responsabilidad del cliente.
+
+Recomendacion: separar explicitamente:
+
+- `ProductRow`: shape de Supabase.
+- `Product`: shape de UI.
+- `CreateProductInput` / `UpdateProductInput`: payloads del cliente, sin
+  `user_id`.
+- `tipo_id`: UUID real.
+- `tipo_nombre` o `tipo`: etiqueta visible.
+
+### Consistencia de Idioma y Mensajes
+
+- Hay mezcla de textos en ingles y espanol en formularios de auth:
+  `Login`, `Sign up`, `Forgot your password?`, `Saving...`, etc.
+- Logs internos y errores de base usan mensajes en ingles, mientras la UI y API
+  responden principalmente en espanol.
+- `N/A` aparece en tabla de productos aunque el resto de la UI esta en espanol.
+
+Recomendacion: antes de UI/UX final, definir idioma unico para producto. Para
+este proyecto, el espanol parece el default natural.
+
+### Observaciones de Modularidad
+
+- La separacion principal `app -> hooks -> lib/api -> route handlers ->
+  service -> database -> Supabase` esta clara y mantenible.
+- `database/items.ts` y `database/productTypes.ts` repiten el helper privado
+  `getSupabaseClient()`. No es grave, pero podria consolidarse si aparecen mas
+  repositorios.
+- `TypeCombobox` concentra seleccion, creacion, borrado y errores de tipos. Es
+  funcional, pero crece como componente de dominio y podria dividirse si se
+  agregan mas acciones o permisos.
+- `useProductTypes()` carga tipos por cada montaje del combobox. Hoy es
+  aceptable, pero si el modal crece o se reutiliza el selector en varias vistas,
+  convendria cachear o elevar ese estado.
+
+### Riesgo Actual
+
+No hay riesgo inmediato de build roto. Los riesgos principales son:
+
+1. Limpieza: restos del starter pueden confundir la arquitectura real.
+2. Mantenibilidad: `tipo_id` con doble significado complica cambios futuros.
+3. Seguridad conceptual: los tipos de formulario permiten `user_id` aunque el
+   servidor lo ignore/controla.
+4. Producto: rutas placeholder y links `#` hacen que la app parezca incompleta.
+
+### Recomendacion de Orden de Limpieza
+
+1. Eliminar o aislar restos del starter (`hero`, `deploy-button`,
+   `components/tutorial/*`, logos asociados).
+2. Decidir destino de `/protected` y sus componentes legacy.
+3. Quitar placeholders visibles: `/instruments`, links `#`, log de
+   configuracion.
+4. Separar contratos de `tipo_id`/`tipo_nombre` y payloads sin `user_id`.
+5. Activar reglas o herramientas para detectar exports muertos si el equipo
+   quiere mantener la codebase mas estricta.
+
+## Cambios Aplicados: Limpieza Profunda Antes de UI/UX
+
+Esta seccion documenta la aplicacion de la auditoria anterior. Se mantuvieron
+intactos los contratos de dominio actuales relacionados con `user_id` y
+`tipo_id`.
+
+### Archivos y Restos Eliminados
+
+- Se elimino la ruta placeholder `app/instruments/page.tsx`.
+- Se eliminaron archivos sin referencia del starter:
+  - `components/deploy-button.tsx`
+  - `components/hero.tsx`
+  - `components/next-logo.tsx`
+  - `components/supabase-logo.tsx`
+  - `components/tutorial/code-block.tsx`
+  - `components/tutorial/connect-supabase-steps.tsx`
+  - `components/tutorial/fetch-data-steps.tsx`
+  - `components/tutorial/sign-up-user-steps.tsx`
+  - `components/tutorial/tutorial-step.tsx`
+- Se elimino `components/ui/checkbox.tsx`, cuyo unico consumidor era el
+  tutorial eliminado.
+- Se retiro `@radix-ui/react-checkbox` como dependencia directa. El paquete
+  permanece solo como dependencia transitiva de `radix-ui`.
+- Se conservaron `/protected` y todos sus componentes requeridos.
+- Se conservaron los placeholders de Soporte, Privacidad, Contacto y
+  Configuracion por decision de producto.
+
+### Codigo y Tipos Sin Uso
+
+- Se eliminaron `generateTempId()` y `filterProducts()` de `lib/utils.ts`.
+- Se elimino el bloque comentado de `getProductById()` en `lib/api.ts`.
+- Se eliminaron `SortField`, `SortDirection`, `TableSort` y `ModalMode` como
+  tipos publicos sin consumidores.
+- Los tipos auxiliares de `lib/contentNormalizer.ts` y
+  `lib/validation/products.ts` ahora son internos al archivo.
+- `normalizeProduct()` dejo de exportarse fuera de `lib/products.service.ts`.
+- `lib/products.server.ts` ahora re-exporta solo `getProductsForDashboard`.
+
+### Consistencia en Espanol
+
+- Se tradujeron textos visibles de login, registro, recuperacion y cambio de
+  contrasena.
+- Se tradujeron `/auth/error`, `/auth/sign-up-success`, `/protected`, el
+  selector de tema y componentes auxiliares de autenticacion.
+- Se tradujeron mensajes internos de acceso a datos y logs de rutas de tipos.
+- Se reemplazo `N/A` por `No disponible`.
+- Se eliminaron o tradujeron comentarios heredados del starter que seguian en
+  ingles.
+
+### Prevencion de Nueva Deuda
+
+- `tsconfig.json` ahora activa:
+  - `noUnusedLocals`
+  - `noUnusedParameters`
+- El cruce final de imports locales no encontro archivos sin referencia.
+- README fue actualizado para reflejar la estructura real despues de la poda.
+
+### Verificacion Final
+
+```bash
+npm.cmd run lint
+```
+
+Resultado: exitoso.
+
+```bash
+npm.cmd run build
+```
+
+Resultado: exitoso. El mapa final ya no incluye `/instruments`.
+
+Nota: al eliminar `/instruments`, el cache generado `.next/dev` conservo una
+referencia obsoleta. Se regeneraron tipos con `next typegen` y se limpio
+unicamente `.next/dev`; no se modificaron archivos fuente para ocultar el
+problema.

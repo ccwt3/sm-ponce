@@ -44,7 +44,7 @@ export function NavbarMenu() {
             className="flex w-full items-center gap-2.5 border-b border-brand-border px-4 py-2.5 text-left text-sm text-brand-text-primary transition-colors hover:bg-brand-surface"
           >
             <Settings size={14} strokeWidth={1.75} />
-            Configuracion
+            Configuración
           </button>
           <button
             onClick={async () => {
@@ -68,7 +68,7 @@ export function NavbarMenu() {
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-brand-danger transition-colors hover:bg-brand-danger-hover-bg"
           >
             <LogOut size={14} strokeWidth={1.75} />
-            {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
+            {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
           </button>
           {logoutError && (
             <p className="border-t border-brand-border px-4 py-2 text-xs text-brand-danger">

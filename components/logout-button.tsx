@@ -6,5 +6,5 @@ import { useLogout } from "@/hooks/useLogout";
 export function LogoutButton() {
   const logout = useLogout();
 
-  return <Button onClick={logout}>Logout</Button>;
+  return <Button onClick={logout}>Cerrar sesión</Button>;
 }

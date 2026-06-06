@@ -50,24 +50,10 @@ export interface ApiResponse<T> {
 export type ProductListResponse = ApiResponse<Product[]>;
 export type ProductResponse = ApiResponse<Product>;
 
-export type SortField = keyof Pick<
-  Product,
-  "nombre" | "tipo_id" | "existencia" | "precio_proveedor" | "precio_publico"
->;
-
-export type SortDirection = "asc" | "desc";
-
-export interface TableSort {
-  field: SortField;
-  direction: SortDirection;
-}
-
 export type StockStatus = "ok" | "low" | "empty";
 
-export type ModalMode = "create" | "edit" | "closed";
-
 export interface ModalState {
-  mode: ModalMode;
+  mode: "create" | "edit" | "closed";
   product?: Product;
 }
 

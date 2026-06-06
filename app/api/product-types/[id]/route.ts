@@ -24,7 +24,7 @@ export async function DELETE(
       message: `Tipo de producto con ID ${id} eliminado`,
     });
   } catch (error) {
-    console.error("Error deleting product type:", error);
+    console.error("Error al eliminar tipo de producto:", error);
     return errorResponse(error, "Error al eliminar tipo de producto");
   }
 }

@@ -34,11 +34,6 @@ export async function getProducts(): Promise<Product[]> {
   return response.data;
 }
 
-export async function getProductById(id: string): Promise<Product> {
-  const response = await apiFetch<ProductResponse>(`/products/${id}`);
-  return response.data;
-}
-
 export async function createProduct(input: CreateProductInput): Promise<Product> {
   const response = await apiFetch<ProductResponse>("/products", {
     method: "POST",

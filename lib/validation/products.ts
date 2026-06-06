@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-export type ProductInput = z.infer<typeof productCreateSchema>;
-export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
-
 type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
@@ -83,6 +80,9 @@ const productUpdateSchema = productCreateSchema
   .refine((data) => Object.keys(data).length > 0, {
     message: "No hay campos validos para actualizar",
   });
+
+type ProductInput = z.infer<typeof productCreateSchema>;
+type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 
 function firstValidationError(error: z.ZodError): string {
   const issue = error.issues[0];

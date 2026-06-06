@@ -28,8 +28,8 @@ class ProductTypesDatabase {
       .maybeSingle();
 
     if (error) {
-      console.error("Error fetching product type:", error);
-      throw new Error("Error fetching product type");
+      console.error("Error al obtener tipo de producto:", error);
+      throw new Error("Error al obtener tipo de producto");
     }
 
     return type;
@@ -44,8 +44,8 @@ class ProductTypesDatabase {
       .eq("user_id", userId);
 
     if (error) {
-      console.error("Error fetching product types:", error);
-      throw new Error("Error fetching product types");
+      console.error("Error al obtener tipos de producto:", error);
+      throw new Error("Error al obtener tipos de producto");
     }
 
     return types ?? [];
@@ -67,8 +67,8 @@ class ProductTypesDatabase {
       .single();
 
     if (error) {
-      console.error("Error creating product type:", error);
-      throw new Error("Error creating product type");
+      console.error("Error al crear tipo de producto:", error);
+      throw new Error("Error al crear tipo de producto");
     }
 
     return newType;
@@ -86,8 +86,8 @@ class ProductTypesDatabase {
       .maybeSingle();
 
     if (error) {
-      console.error("Error deleting product type:", error);
-      throw new Error("Error deleting product type");
+      console.error("Error al eliminar tipo de producto:", error);
+      throw new Error("Error al eliminar tipo de producto");
     }
 
     return Boolean(type);

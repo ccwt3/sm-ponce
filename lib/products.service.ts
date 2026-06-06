@@ -28,7 +28,7 @@ function productFromRow(
   };
 }
 
-export function normalizeProduct(product: RawProduct): Product {
+function normalizeProduct(product: RawProduct): Product {
   return productFromRow(product, product.tipo);
 }
 

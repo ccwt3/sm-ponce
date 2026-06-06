@@ -1,13 +1,13 @@
 import { StockBadge } from "@/components/ui/StockBadge";
 import { inventoryTable } from "@/components/inventory/styles";
 import { formatPrice } from "@/lib/utils";
-import { Product } from "@/types";
+import type { Product } from "@/types";
 import { productTableColumns } from "@/lib/contentNormalizer";
 
 function emptyCell(key: string) {
   return (
     <td key={key} className={inventoryTable.cellSecondary}>
-      N/A
+      No disponible
     </td>
   );
 }

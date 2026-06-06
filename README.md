@@ -60,9 +60,8 @@ NEXT_PUBLIC_API_URL=
 - `app/page.tsx`: pantalla principal del inventario. Es un Server Component que carga productos iniciales y delega la interactividad a `InventoryDashboardClient`.
 - `app/api/products/route.ts`: route handler para listar y crear productos.
 - `app/api/products/[id]/route.ts`: route handler para obtener, actualizar y eliminar por id.
-- `app/auth/*`: pantallas y rutas heredadas del starter para login, registro, confirmacion, recuperacion y cambio de password.
+- `app/auth/*`: pantallas y rutas de autenticacion para login, registro, confirmacion, recuperacion y cambio de password.
 - `app/protected/*`: pagina protegida auxiliar. Muestra la sesion actual.
-- `app/instruments/page.tsx`: placeholder de un modulo aun no configurado.
 - `app/layout.tsx`: layout raiz con metadatos de Motorefacciones.
 - `app/globals.css`: Tailwind base/components/utilities.
 
@@ -75,8 +74,7 @@ NEXT_PUBLIC_API_URL=
 - `components/layout/Navbar.tsx`: barra superior de Motorefacciones con menu de configuracion y logout.
 - `components/layout/Footer.tsx`: pie de pagina simple.
 - `components/ui/*`: componentes reutilizables de UI. `StockBadge.tsx` es especifico del inventario; otros son base del starter/shadcn.
-- `components/*form.tsx`, `auth-button`, `logout-button`, etc.: componentes de autenticacion del starter Supabase.
-- `components/tutorial/*`, logos y deploy button: restos del starter. No son parte del flujo principal de inventario.
+- `components/*form.tsx`, `auth-button`, `logout-button`, etc.: componentes de autenticacion reutilizados por las rutas de auth y `/protected`.
 
 ### `hooks`
 
@@ -92,10 +90,10 @@ Responsabilidades actuales:
 
 ### `lib`
 
-- `lib/api.ts`: cliente HTTP del frontend hacia los route handlers de Next.js. Expone `getProducts`, `getProductById`, `createProduct`, `updateProduct` y `deleteProduct`.
+- `lib/api.ts`: cliente HTTP del frontend hacia los route handlers de Next.js. Expone operaciones usadas por inventario y tipos de producto.
 - `lib/contentNormalizer.ts`: define campos de formulario y columnas de tabla con nombres semanticos.
 - `lib/products.service.ts`: coordina validacion, resolucion de tipos y normalizacion de productos.
-- `lib/utils.ts`: utilidades de clases, formato de precio MXN, estado de stock, clases de badge y helpers heredados.
+- `lib/utils.ts`: utilidades de clases, formato de precio MXN, estado de stock y configuracion de entorno.
 - `lib/supabase/client.ts`: cliente Supabase para Client Components.
 - `lib/supabase/server.ts`: cliente Supabase para Server Components y route handlers con cookies.
 - `lib/supabase/proxy.ts`: refresco de sesion y redireccion a login cuando no hay usuario.

@@ -22,21 +22,21 @@ type ProductTableColumnKey = keyof Pick<
   | "precio_publico"
 >;
 
-export type ProductFormInputKind =
+type ProductFormInputKind =
   | "text"
   | "productType"
   | "integer"
   | "decimal";
-export type ProductTableColumnKind = "emphasis" | "text" | "stock" | "price";
+type ProductTableColumnKind = "emphasis" | "text" | "stock" | "price";
 
-export interface ProductFormField {
+interface ProductFormField {
   name: ProductFormFieldName;
   label: string;
   kind: ProductFormInputKind;
   span?: "full";
 }
 
-export interface ProductTableColumn {
+interface ProductTableColumn {
   key: ProductTableColumnKey;
   label: string;
   kind: ProductTableColumnKind;

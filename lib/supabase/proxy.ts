@@ -55,7 +55,7 @@ function unauthenticatedResponse(
     return copyResponseCookies(
       supabaseResponse,
       NextResponse.json(
-        { error: "Debes iniciar sesion para continuar" },
+        { error: "Debes iniciar sesión para continuar" },
         { status: 401 },
       ),
     );
@@ -88,14 +88,12 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If the env vars are not set, skip proxy check. You can remove this
-  // once you setup the project.
+  // Sin variables de Supabase no es posible validar la sesion.
   if (!hasEnvVars) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+  // El cliente debe crearse por solicitud para conservar cookies correctas.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -119,12 +117,7 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
+  // getClaims debe ejecutarse inmediatamente despues de crear el cliente.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
@@ -139,18 +132,6 @@ export async function updateSession(request: NextRequest) {
     return authenticatedResponse(request, supabaseResponse);
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
-
+  // Esta respuesta contiene las cookies actualizadas de la sesion.
   return supabaseResponse;
 }
