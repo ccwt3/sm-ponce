@@ -3,9 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { LogOut, Settings } from "lucide-react";
 
+import { useLogout } from "@/hooks/useLogout";
+
 export function NavbarMenu() {
   const [open, setOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const logout = useLogout();
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -42,15 +47,34 @@ export function NavbarMenu() {
             Configuracion
           </button>
           <button
-            onClick={() => {
-              setOpen(false);
-              console.log("-> cerrar sesion");
+            onClick={async () => {
+              setLogoutError(null);
+              setIsLoggingOut(true);
+
+              try {
+                await logout();
+                setOpen(false);
+              } catch (error) {
+                setLogoutError(
+                  error instanceof Error
+                    ? error.message
+                    : "Error al cerrar sesion",
+                );
+              } finally {
+                setIsLoggingOut(false);
+              }
             }}
+            disabled={isLoggingOut}
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-brand-danger transition-colors hover:bg-brand-danger-hover-bg"
           >
             <LogOut size={14} strokeWidth={1.75} />
-            Cerrar sesion
+            {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
           </button>
+          {logoutError && (
+            <p className="border-t border-brand-border px-4 py-2 text-xs text-brand-danger">
+              {logoutError}
+            </p>
+          )}
         </div>
       )}
     </div>

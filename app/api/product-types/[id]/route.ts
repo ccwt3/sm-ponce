@@ -1,25 +1,30 @@
 import { getCurrentUserId } from "@/lib/server-utils";
 import { NextResponse, NextRequest } from "next/server";
 import productTypesDatabase from "@/database/productTypes";
+import { errorResponse } from "@/lib/api-errors";
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const userId = await getCurrentUserId();
 
-    await productTypesDatabase.deleteTypeOfProduct(id, userId);
+    const deleted = await productTypesDatabase.deleteTypeOfProduct(id, userId);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Tipo de producto no encontrado" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json({
       message: `Tipo de producto con ID ${id} eliminado`,
     });
   } catch (error) {
     console.error("Error deleting product type:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar tipo de producto" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al eliminar tipo de producto");
   }
 }

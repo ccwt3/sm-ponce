@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import typesDatabase from "@/database/productTypes";
+import { errorResponse } from "@/lib/api-errors";
 import { getCurrentUserId } from "@/lib/server-utils";
 import { validateProductTypeInput } from "@/lib/validation/productTypes";
 
 export async function GET() {
   try {
-    const types = await typesDatabase.getAllTypesOfProducts();
+    const userId = await getCurrentUserId();
+    const types = await typesDatabase.getAllTypesOfProducts(userId);
 
     return NextResponse.json({ data: types });
   } catch (error) {
     console.error("Error fetching product types:", error);
 
-    return NextResponse.json(
-      { error: "Error al obtener tipos de productos" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al obtener tipos de productos");
   }
 }
 
@@ -47,9 +46,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: newType });
   } catch (error) {
     console.error("Error creating product type:", error);
-    return NextResponse.json(
-      { error: "Error al crear tipo de producto" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al crear tipo de producto");
   }
 }

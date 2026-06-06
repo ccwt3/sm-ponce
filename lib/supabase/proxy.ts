@@ -2,6 +2,87 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
+const publicPathPrefixes = ["/auth"];
+const publicPaths = ["/login"];
+const guestOnlyPaths = [
+  "/auth/forgot-password",
+  "/auth/login",
+  "/auth/sign-up",
+  "/auth/sign-up-success",
+  "/login",
+];
+
+function isPublicPath(pathname: string) {
+  return (
+    publicPaths.includes(pathname) ||
+    publicPathPrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  );
+}
+
+function isGuestOnlyPath(pathname: string) {
+  return guestOnlyPaths.includes(pathname);
+}
+
+function getSafeRedirectPath(path: string | null) {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+    return "/";
+  }
+
+  const url = new URL(path, "http://localhost");
+
+  if (isGuestOnlyPath(url.pathname)) {
+    return "/";
+  }
+
+  return `${url.pathname}${url.search}`;
+}
+
+function copyResponseCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach(({ name, value, ...options }) => {
+    to.cookies.set(name, value, options);
+  });
+
+  return to;
+}
+
+function unauthenticatedResponse(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+) {
+  if (request.nextUrl.pathname.startsWith("/api")) {
+    return copyResponseCookies(
+      supabaseResponse,
+      NextResponse.json(
+        { error: "Debes iniciar sesion para continuar" },
+        { status: 401 },
+      ),
+    );
+  }
+
+  const url = request.nextUrl.clone();
+  url.pathname = "/auth/login";
+  url.searchParams.set(
+    "next",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+
+  return copyResponseCookies(supabaseResponse, NextResponse.redirect(url));
+}
+
+function authenticatedResponse(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+) {
+  const nextPath = getSafeRedirectPath(
+    request.nextUrl.searchParams.get("next"),
+  );
+  const url = new URL(nextPath, request.url);
+
+  return copyResponseCookies(supabaseResponse, NextResponse.redirect(url));
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -47,17 +128,15 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  //todo ESTA DESACTIVADA LA LOGICA DE PROTECCION
   if (
-    request.nextUrl.pathname !== "/" &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !isPublicPath(request.nextUrl.pathname)
   ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return unauthenticatedResponse(request, supabaseResponse);
+  }
+
+  if (user && isGuestOnlyPath(request.nextUrl.pathname)) {
+    return authenticatedResponse(request, supabaseResponse);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

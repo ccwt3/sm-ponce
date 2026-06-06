@@ -46,13 +46,15 @@ async function resolveProductType(
 }
 
 export async function getProductsForDashboard(): Promise<Product[]> {
-  const rawProducts = await itemsDatabase.getAllProducts();
+  const userId = await getCurrentUserId();
+  const rawProducts = await itemsDatabase.getAllProducts({ userId });
 
   return rawProducts.map(normalizeProduct);
 }
 
 export async function getProductById(id: string): Promise<Product> {
-  const product = await itemsDatabase.getProductById(id);
+  const userId = await getCurrentUserId();
+  const product = await itemsDatabase.getProductById(id, userId);
 
   if (!product) {
     throw new ProductServiceError("Producto no encontrado", 404);
@@ -97,11 +99,18 @@ export async function updateProduct(
     ? await resolveProductType(body.tipo_id, userId)
     : null;
 
-  const updatedProduct = await itemsDatabase.updateProduct({
-    ...body,
-    id,
-    ...(productType ? { tipo_id: productType.id } : {}),
-  });
+  const updatedProduct = await itemsDatabase.updateProduct(
+    {
+      ...body,
+      id,
+      ...(productType ? { tipo_id: productType.id } : {}),
+    },
+    userId,
+  );
+
+  if (!updatedProduct) {
+    throw new ProductServiceError("Producto no encontrado", 404);
+  }
 
   const responseType = productType ?? (
     updatedProduct.tipo_id
@@ -113,5 +122,12 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<string> {
-  return itemsDatabase.deleteProduct(id);
+  const userId = await getCurrentUserId();
+  const deletedId = await itemsDatabase.deleteProduct(id, userId);
+
+  if (!deletedId) {
+    throw new ProductServiceError("Producto no encontrado", 404);
+  }
+
+  return deletedId;
 }

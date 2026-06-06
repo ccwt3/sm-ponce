@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   deleteProduct,
   getProductById,
-  ProductServiceError,
   updateProduct,
 } from "@/lib/products.service";
+import { errorResponse } from "@/lib/api-errors";
 
 export async function GET(
   _req: NextRequest,
@@ -16,17 +16,7 @@ export async function GET(
 
     return NextResponse.json({ data: product });
   } catch (error) {
-    if (error instanceof ProductServiceError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Error al obtener producto" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al obtener producto");
   }
 }
 
@@ -41,17 +31,7 @@ export async function PUT(
 
     return NextResponse.json({ data: product });
   } catch (error) {
-    if (error instanceof ProductServiceError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Error al actualizar producto" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al actualizar producto");
   }
 }
 
@@ -65,11 +45,6 @@ export async function DELETE(
 
     return NextResponse.json({ data: { id: deletedId } });
   } catch (error) {
-    
-    console.error("Error deleting product:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar producto" },
-      { status: 500 },
-    );
+    return errorResponse(error, "Error al eliminar producto");
   }
 }

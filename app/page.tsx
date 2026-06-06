@@ -4,6 +4,8 @@ import { InventoryDashboardClient } from "@/components/inventory/InventoryDashbo
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { getProductsForDashboard } from "@/lib/products.server";
+import { AuthRequiredError } from "@/lib/server-utils";
+import { redirect } from "next/navigation";
 import type { Product } from "@/types";
 
 async function InventoryDashboardServer() {
@@ -12,7 +14,11 @@ async function InventoryDashboardServer() {
 
   try {
     initialProducts = await getProductsForDashboard();
-  } catch {
+  } catch (error) {
+    if (error instanceof AuthRequiredError) {
+      redirect("/auth/login");
+    }
+
     initialError = "Error al obtener productos";
   }
 

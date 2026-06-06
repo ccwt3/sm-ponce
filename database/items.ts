@@ -14,6 +14,7 @@ const productSelect = `
 interface ProductPageOptions {
   page?: number;
   pageSize?: number;
+  userId: string;
 }
 
 class ItemsDatabase {
@@ -25,12 +26,14 @@ class ItemsDatabase {
   async getAllProducts({
     page = DEFAULT_PAGE,
     pageSize = DEFAULT_PAGE_SIZE,
-  }: ProductPageOptions = {}): Promise<RawProduct[]> {
+    userId,
+  }: ProductPageOptions): Promise<RawProduct[]> {
     const supabase = await this.getSupabaseClient();
 
     const { data: products, error } = await supabase
       .from("producto")
       .select(productSelect)
+      .eq("user_id", userId)
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) {
@@ -41,13 +44,17 @@ class ItemsDatabase {
     return products as RawProduct[];
   }
 
-  async getProductById(id: string): Promise<RawProduct | null> {
+  async getProductById(
+    id: string,
+    userId: string,
+  ): Promise<RawProduct | null> {
     const supabase = await this.getSupabaseClient();
 
     const { data: product, error } = await supabase
       .from("producto")
       .select(productSelect)
       .eq("id", id)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (error) {
@@ -77,7 +84,8 @@ class ItemsDatabase {
 
   async updateProduct(
     body: Partial<ProductWriteInput> & { id: string },
-  ): Promise<ProductRow> {
+    userId: string,
+  ): Promise<ProductRow | null> {
     const supabase = await this.getSupabaseClient();
     const { id, ...updates } = body;
 
@@ -85,8 +93,9 @@ class ItemsDatabase {
       .from("producto")
       .update(updates)
       .eq("id", id)
+      .eq("user_id", userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error updating product:", error);
@@ -96,19 +105,22 @@ class ItemsDatabase {
     return product;
   }
 
-  async deleteProduct(id: string) {
+  async deleteProduct(id: string, userId: string): Promise<string | null> {
     const supabase = await this.getSupabaseClient();
-    const { error } = await supabase
+    const { data: product, error } = await supabase
       .from("producto")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       console.error("Error deleting product:", error);
       throw new Error("Error deleting product");
     }
 
-    return id;
+    return product?.id ?? null;
   }
 }
 
