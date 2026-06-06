@@ -1,265 +1,293 @@
 # Motorefacciones - Inventario
 
-Aplicacion Next.js para gestionar inventario de una refaccionaria de motocicletas. El objetivo funcional es administrar productos con nombre, modelo compatible, medida, tipo de producto, existencia, precio base/proveedor, precio de venta/publico y acciones CRUD para crear, editar y eliminar registros.
-
-La aplicacion usa React en el frontend, App Router de Next.js, Tailwind CSS para estilos y Supabase para autenticacion, sesiones y acceso a datos. La seguridad de filas queda delegada a RLS de Supabase.
+Aplicacion web privada para administrar el inventario de una refaccionaria de
+motocicletas. Permite a cada usuario autenticado consultar y gestionar sus
+productos y tipos de producto mediante una interfaz operativa conectada a
+Supabase.
 
 ## Estado actual
 
-La pantalla principal del inventario vive en `app/page.tsx`. Esta vista carga productos, permite busqueda en tiempo real, muestra una tabla, abre un modal para crear/editar y expone una accion de borrado.
+La aplicacion cuenta con un MVP funcional del inventario:
 
-El flujo actual es:
+- Autenticacion por correo y contrasena con Supabase Auth.
+- Proteccion de paginas y endpoints para usuarios autenticados.
+- Redireccion segura al login y retorno a la ruta solicitada.
+- Listado, busqueda, alta, edicion y eliminacion de productos.
+- Consulta, alta y eliminacion de tipos de producto.
+- Validacion de payloads en servidor con Zod.
+- Confirmacion antes de eliminar productos o tipos.
+- Manejo visible de errores y restauracion del estado cuando falla un borrado.
+- Separacion de datos por usuario reforzada en codigo y mediante RLS de
+  Supabase.
 
-```txt
-app/page.tsx
-  -> hooks/useInventory.ts
-    -> lib/api.ts
-      -> app/api/products/route.ts
-      -> app/api/products/[id]/route.ts
-        -> database/items.ts
-          -> lib/supabase/server.ts
-            -> Supabase
-```
-
-Hay una base solida para separar UI, estado, API y base de datos, pero el proyecto todavia mezcla codigo propio del inventario con restos del starter de Supabase/Next.js.
+La ruta principal `/` contiene el inventario y requiere una sesion valida.
+`/protected` se conserva como pagina auxiliar para inspeccionar la sesion
+durante desarrollo.
 
 ## Stack
 
-- Next.js con App Router.
-- React 19.
-- TypeScript con `strict` activo.
-- Tailwind CSS.
-- Supabase SSR con `@supabase/ssr` y `@supabase/supabase-js`.
-- Radix UI y componentes estilo shadcn en `components/ui`.
-- `lucide-react` para iconos.
-- pnpm como gestor de dependencias segun `pnpm-lock.yaml`.
+- Next.js 16 con App Router, Server Components y Route Handlers.
+- React 19 y TypeScript estricto.
+- Tailwind CSS, Radix UI y componentes estilo shadcn.
+- Supabase Auth, Supabase SSR y PostgreSQL con RLS.
+- Zod para validacion de entradas del servidor.
+- pnpm como gestor de dependencias.
 
-Scripts disponibles:
+## Funcionalidades
 
-```bash
-pnpm dev
-pnpm build
-pnpm start
-pnpm lint
+### Inventario
+
+Cada producto contiene:
+
+- Nombre.
+- Modelo compatible.
+- Medida.
+- Tipo de producto.
+- Existencia.
+- Precio proveedor.
+- Precio publico.
+
+La pantalla principal carga inicialmente los productos desde el servidor. La
+busqueda se realiza en tiempo real sobre los productos cargados y considera
+`nombre`, `modelo`, `medida` y el nombre visible del tipo.
+
+Crear y editar productos se realiza desde un modal. El servidor valida campos
+requeridos, convierte entradas numericas, rechaza valores negativos y exige que
+la existencia sea un entero.
+
+El borrado solicita confirmacion y se refleja de forma optimista en la tabla. Si
+la operacion falla, el producto se restaura y el error aparece en la interfaz.
+
+### Tipos de producto
+
+El selector de tipos permite:
+
+- Buscar tipos existentes.
+- Crear un tipo nuevo desde el mismo selector.
+- Eliminar un tipo despues de confirmarlo.
+
+Los tipos disponibles pertenecen al usuario autenticado.
+
+### Autenticacion
+
+La aplicacion incluye:
+
+- Inicio de sesion.
+- Registro.
+- Confirmacion por correo.
+- Recuperacion de contrasena.
+- Actualizacion de contrasena.
+- Cierre de sesion compartido entre la pagina principal y `/protected`.
+
+Un usuario autenticado que visita una pantalla exclusiva para invitados, como
+`/auth/login`, es redirigido al inventario.
+
+## Arquitectura
+
+El flujo principal mantiene separadas la interfaz, la comunicacion HTTP, las
+reglas de negocio y el acceso a datos:
+
+```txt
+app/page.tsx
+  -> components/inventory/InventoryDashboardClient.tsx
+    -> hooks/useInventory.ts
+      -> lib/api.ts
+        -> app/api/*
+          -> lib/products.service.ts
+            -> database/*
+              -> lib/supabase/server.ts
+                -> Supabase + RLS
 ```
 
-Variables esperadas:
+### Responsabilidades por directorio
+
+| Directorio | Responsabilidad |
+| --- | --- |
+| `app/` | Paginas, layouts, autenticacion y endpoints internos. |
+| `components/inventory/` | Tabla, modal, selector de tipos, confirmaciones y errores del inventario. |
+| `components/layout/` | Navegacion y pie de pagina. |
+| `components/ui/` | Primitivas reutilizables de interfaz. |
+| `hooks/` | Estado y operaciones interactivas del cliente. |
+| `lib/` | Cliente API, servicios, validacion, seguridad y utilidades. |
+| `database/` | Consultas a las tablas `producto` y `tipo`. |
+| `types/` | Contratos compartidos de dominio y respuestas. |
+| `proxy.ts` | Punto de entrada del proxy de Next para refrescar y proteger sesiones. |
+
+## Proteccion y seguridad
+
+La proteccion se aplica en varias capas complementarias.
+
+### Proxy de sesion
+
+`proxy.ts` delega en `lib/supabase/proxy.ts` para:
+
+- Refrescar las cookies de sesion de Supabase.
+- Redirigir usuarios anonimos a `/auth/login`.
+- Conservar la ruta solicitada en el parametro seguro `next`.
+- Responder `401` en JSON cuando un usuario anonimo llama a `/api/*`.
+- Evitar que usuarios autenticados regresen a paginas exclusivas para
+  invitados.
+
+Las rutas bajo `/auth/*` son publicas porque alojan los flujos de autenticacion.
+Las rutas de login, registro y recuperacion son exclusivas para invitados.
+
+### Autorizacion del servidor
+
+Los servicios y endpoints no dependen solamente del proxy:
+
+- `requireCurrentUser()` valida la sesion nuevamente con Supabase.
+- `getCurrentUserId()` obtiene el propietario autenticado.
+- El servidor asigna `user_id` al crear datos; no confia en el propietario
+  enviado por el cliente.
+- Las consultas, actualizaciones y eliminaciones filtran por `user_id`.
+- Los errores de autenticacion se convierten en respuestas HTTP `401`.
+
+### RLS
+
+Las politicas RLS de Supabase son la ultima frontera de autorizacion y deben
+permanecer activas para `producto` y `tipo`. El codigo usa el cliente de usuario
+con cookies de sesion; no utiliza una service role para saltarse RLS.
+
+## Rutas
+
+| Ruta | Acceso | Proposito |
+| --- | --- | --- |
+| `/` | Autenticado | Inventario principal. |
+| `/protected` | Autenticado | Diagnostico de claims de la sesion. |
+| `/auth/login` | Invitado | Inicio de sesion. |
+| `/auth/sign-up` | Invitado | Registro. |
+| `/auth/forgot-password` | Invitado | Solicitud de recuperacion. |
+| `/auth/update-password` | Publica dentro del flujo de recuperacion | Cambio de contrasena. |
+| `/auth/confirm` | Publica | Confirmacion de OTP enviado por Supabase. |
+| `/api/products` | Autenticado | Listar y crear productos. |
+| `/api/products/[id]` | Autenticado | Consultar, editar y eliminar un producto. |
+| `/api/product-types` | Autenticado | Listar y crear tipos. |
+| `/api/product-types/[id]` | Autenticado | Eliminar un tipo. |
+
+## Manejo de errores
+
+Los Route Handlers devuelven errores JSON con un estado HTTP apropiado. El
+cliente transforma esas respuestas en errores legibles para la interfaz.
+
+- Los errores de carga se muestran dentro del estado principal.
+- Los errores de crear, editar o eliminar productos aparecen en un aviso
+  flotante descartable.
+- Los errores al eliminar tipos se muestran dentro del dialogo de
+  confirmacion.
+- El borrado optimista de productos se revierte cuando la API falla.
+- Los modales conservan su estado cuando una operacion no termina
+  correctamente.
+
+## Requisitos y configuracion
+
+Se necesita una version de Node.js compatible con Next.js 16, Corepack/pnpm y
+un proyecto de Supabase con Auth y RLS configurados.
+
+Crea `.env.local` con:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_SUPABASE_URL=https://TU_PROYECTO.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=TU_PUBLISHABLE_KEY
+
+# Opcional. Por defecto el cliente usa /api.
+NEXT_PUBLIC_API_URL=/api
 ```
 
-`NEXT_PUBLIC_API_URL` es opcional. Si no existe, `lib/api.ts` usa `/api`.
+Las variables de Supabase son obligatorias para validar sesiones. Los archivos
+`.env*` locales no se versionan.
 
-## Estructura revisada
+### Instalacion
 
-### `app`
-
-- `app/page.tsx`: pantalla principal del inventario. Es un Server Component que carga productos iniciales y delega la interactividad a `InventoryDashboardClient`.
-- `app/api/products/route.ts`: route handler para listar y crear productos.
-- `app/api/products/[id]/route.ts`: route handler para obtener, actualizar y eliminar por id.
-- `app/auth/*`: pantallas y rutas de autenticacion para login, registro, confirmacion, recuperacion y cambio de password.
-- `app/protected/*`: pagina protegida auxiliar. Muestra la sesion actual.
-- `app/layout.tsx`: layout raiz con metadatos de Motorefacciones.
-- `app/globals.css`: Tailwind base/components/utilities.
-
-### `components`
-
-- `components/inventory/ProductTable.tsx`: tabla principal. Recibe productos filtrados y callbacks de editar/borrar.
-- `components/inventory/ProductTableRows.tsx`: renderiza celdas a partir de columnas semanticas de inventario.
-- `components/inventory/ProductModal.tsx`: modal de crear/editar producto. Mantiene estado local del formulario.
-- `components/inventory/ProductModalFields.tsx`: renderiza inputs de formulario a partir de campos semanticos de inventario.
-- `components/layout/Navbar.tsx`: barra superior de Motorefacciones con menu de configuracion y logout.
-- `components/layout/Footer.tsx`: pie de pagina simple.
-- `components/ui/*`: componentes reutilizables de UI. `StockBadge.tsx` es especifico del inventario; otros son base del starter/shadcn.
-- `components/*form.tsx`, `auth-button`, `logout-button`, etc.: componentes de autenticacion reutilizados por las rutas de auth y `/protected`.
-
-### `hooks`
-
-- `hooks/useInventory.ts`: hook central del inventario.
-
-Responsabilidades actuales:
-
-- Cargar productos desde `GET /api/products`.
-- Mantener `products`, `search`, `loading`, `error` y estado de modal.
-- Filtrar productos localmente en tiempo real.
-- Crear, editar y borrar con llamadas a `lib/api.ts`.
-- Hacer update optimista en borrado y recargar si falla.
-
-### `lib`
-
-- `lib/api.ts`: cliente HTTP del frontend hacia los route handlers de Next.js. Expone operaciones usadas por inventario y tipos de producto.
-- `lib/contentNormalizer.ts`: define campos de formulario y columnas de tabla con nombres semanticos.
-- `lib/products.service.ts`: coordina validacion, resolucion de tipos y normalizacion de productos.
-- `lib/utils.ts`: utilidades de clases, formato de precio MXN, estado de stock y configuracion de entorno.
-- `lib/supabase/client.ts`: cliente Supabase para Client Components.
-- `lib/supabase/server.ts`: cliente Supabase para Server Components y route handlers con cookies.
-- `lib/supabase/proxy.ts`: refresco de sesion y redireccion a login cuando no hay usuario.
-
-### `database`
-
-- `database/items.ts`: capa de acceso a Supabase para la tabla `producto`.
-
-Metodos actuales:
-
-- `getAllProducts()`: consulta `producto`, hace join con `tipo(tipo_de_producto)` y pagina los primeros 50 productos.
-- `getProductById(id)`: consulta un producto por id.
-- `createProduct(body)`: inserta un producto.
-- `updateProduct(body)`: actualiza un producto.
-- `deleteProduct(id)`: elimina un producto.
-
-### `types`
-
-- `types/index.ts`: contratos principales de dominio y UI.
-
-Tipos clave:
-
-- `RawProduct`: forma esperada desde Supabase cuando `tipo` viene como relacion.
-- `Product`: forma usada por la UI.
-- `CreateProductInput`: producto sin `id` ni timestamps.
-- `UpdateProductInput`: campos parciales con `id`.
-- `ModalState`: estado del modal de crear/editar/cerrado.
-- `StockStatus`: `ok`, `low` o `empty`.
-
-## Modelo de producto usado por la UI
-
-```ts
-interface Product {
-  id: string;
-  nombre: string;
-  modelo: string;
-  medida: string;
-  tipo_id: string;
-  existencia: number;
-  precio_proveedor: number;
-  precio_publico: number;
-  creadoEn?: string;
-  actualizadoEn?: string;
-}
+```bash
+pnpm install
+pnpm dev
 ```
 
-Observacion importante: en la lectura de Supabase, `tipo_id` se transforma para contener el texto `tipo.tipo_de_producto`. El nombre `tipo_id` sugiere un identificador, pero en la UI se esta usando como etiqueta visible del tipo.
+La aplicacion queda disponible normalmente en:
 
-## Busqueda en tiempo real
-
-La busqueda esta implementada en `hooks/useInventory.ts` como filtro local sobre el arreglo ya cargado. Esto cumple la parte de reaccion inmediata al escribir: cada cambio en el input de `app/page.tsx` actualiza `search`, recalcula `filteredProducts` y re-renderiza la tabla sin pedir datos de nuevo.
-
-Campos buscados actualmente:
-
-```ts
-const searchFields = ["nombre", "medida", "modelo", "tipo_id"] as const;
+```txt
+http://localhost:3000
 ```
 
-Esto significa que hoy busca por:
+`pnpm-workspace.yaml` aprueba unicamente los scripts nativos requeridos por
+`sharp` y `unrs-resolver`. Si pnpm vuelve a solicitar aprobacion, no habilites
+scripts globalmente; conserva la lista explicita del proyecto.
 
-- nombre
-- medida
-- modelo
-- tipo visible en `tipo_id`
+### Comandos
 
-Brecha contra el requerimiento: el cliente pidio filtrar por `nombre -> modelo -> tipo`. El codigo actual agrega `medida` y no aplica una prioridad real por campo; solamente revisa si cualquiera de los campos contiene el texto. Funcionalmente, si se escribe `camara` o `elpepe`, encontrara coincidencias en cualquiera de esos campos cargados, pero la prioridad `nombre -> modelo -> tipo` no esta modelada como ranking u orden de resultados.
-
-## CRUD actual
-
-### Listar
-
-`GET /api/products` llama a `itemsDatabase.getAllProducts()`, transforma el objeto relacional `tipo` a un campo plano `tipo_id` y responde `{ data: products }`.
-
-La consulta esta limitada a 50 productos:
-
-```ts
-const page = 0;
-const pageSize = 50;
+```bash
+pnpm dev     # Servidor de desarrollo
+pnpm lint    # ESLint
+pnpm build   # Build de produccion y validacion TypeScript
+pnpm start   # Ejecutar el build de produccion
 ```
 
-### Crear
+Antes de entregar cambios:
 
-`POST /api/products` delega validacion, resolucion de tipo y normalizacion en
-`products.service.ts`, luego persiste a traves de `itemsDatabase.createProduct`.
+```bash
+pnpm lint
+pnpm build
+```
 
-### Editar
+## Modelo de datos esperado
 
-`PUT /api/products/[id]` delega validacion parcial, resolucion opcional de tipo y normalizacion en `products.service.ts`. El hook reemplaza el producto actualizado en estado local.
+El codigo espera dos tablas de Supabase.
 
-### Eliminar
+### `producto`
 
-El frontend llama `DELETE /api/products/:id` y hace update optimista quitando la fila de la tabla. El route handler delega el borrado en `products.service.ts`, que llama a `database/items.ts`.
+```txt
+id
+nombre
+modelo
+medida
+tipo_id
+existencia
+precio_proveedor
+precio_publico
+user_id
+```
 
-## Supabase y seguridad
+### `tipo`
 
-La app tiene clientes Supabase separados:
+```txt
+id
+tipo_de_producto
+user_id
+```
 
-- `lib/supabase/client.ts` para navegador.
-- `lib/supabase/server.ts` para servidor y route handlers.
-- `lib/supabase/proxy.ts` para refresco de sesion y control de acceso.
+`producto.tipo_id` almacena el identificador de `tipo` en la base de datos. En
+el modelo normalizado que consume actualmente la UI, la propiedad `tipo_id`
+contiene el nombre visible del tipo. Esta dualidad se conserva por
+compatibilidad y es una deuda de dominio conocida.
 
-El proxy redirige a `/auth/login` si no hay usuario y la ruta no es `/`, `/login` ni `/auth/*`.
+## Decisiones actuales
 
-Punto a revisar: `app/page.tsx` queda excluida de proteccion por la condicion `request.nextUrl.pathname !== "/"`. Si el inventario real debe ser privado, la ruta raiz deberia protegerse o moverse a una ruta protegida.
+- La primera carga ocurre en un Server Component y entrega datos iniciales al
+  cliente.
+- La busqueda es local para responder inmediatamente sin peticiones nuevas.
+- La consulta inicial esta limitada a los primeros 50 productos del usuario.
+- Los precios se presentan en formato MXN.
+- Stock `0` se considera vacio, de `1` a `3` bajo y desde `4` disponible.
+- La configuracion, soporte, privacidad y contacto permanecen como puntos de
+  extension temporal.
+- `/protected` permanece como herramienta auxiliar de desarrollo.
 
-RLS: como las consultas a `producto` se hacen con el cliente server usando la publishable key y cookies, las politicas RLS de Supabase deberian gobernar que puede leer/escribir cada usuario. Esto es correcto como enfoque, siempre que las policies en Supabase esten completas.
+## Limitaciones conocidas
 
-## Modularidad y legibilidad
+- No hay paginacion visible ni busqueda server-side.
+- La busqueda no establece prioridad o ranking entre campos.
+- No existe una suite de pruebas automatizadas.
+- `tipo_id` tiene significados distintos entre la fila de base de datos y el
+  modelo normalizado de UI.
+- Configuracion y enlaces del footer aun no tienen destinos funcionales.
+- La eliminacion de un tipo relacionado con productos depende de las
+  restricciones definidas en Supabase.
 
-### Puntos fuertes
+## Calidad del codigo
 
-- Separacion razonable entre vista (`app/page.tsx`), estado (`useInventory`), cliente HTTP (`lib/api.ts`) y acceso a datos (`database/items.ts`).
-- Los tipos principales estan centralizados en `types/index.ts`.
-- Las configs semanticas de campos reducen duplicacion entre tabla y modal.
-- El filtro de busqueda es simple, local y rapido para datasets pequenos.
-- El badge de stock encapsula reglas visuales y reutiliza helpers de `lib/utils.ts`.
-- El uso de Supabase SSR esta alineado con App Router y cookies.
+El proyecto activa TypeScript estricto, `noUnusedLocals` y
+`noUnusedParameters`. La arquitectura evita que los componentes accedan
+directamente a Supabase y mantiene las operaciones sensibles en el servidor.
 
-### Puntos debiles
-
-- Hay comentarios extensos y varios con mojibake/encoding roto, lo que reduce legibilidad.
-- Aun quedan componentes heredados del starter fuera del flujo principal.
-- El proxy de autenticacion sigue con la proteccion principal desactivada por decision temporal.
-- No hay confirmacion antes de borrar.
-- No hay tests automatizados.
-- No hay paginacion real, busqueda server-side o estrategia para inventarios grandes.
-
-## Problemas funcionales prioritarios
-
-1. Implementar borrado real en Supabase.
-
-   Agregar `deleteProduct(id)` en `database/items.ts` y llamarlo desde `DELETE /api/products/[id]`.
-
-2. Ajustar busqueda al requerimiento exacto.
-
-   Si la prioridad `nombre -> modelo -> tipo` importa, ordenar resultados por prioridad de coincidencia. Si solo importa encontrar por esos campos, quitar `medida` de `searchFields` o confirmar que tambien debe buscarse.
-
-3. Proteger la ruta principal.
-
-   Si `/` es el inventario de produccion, no deberia estar excluida del proxy de autenticacion.
-
-## Recomendaciones de limpieza
-
-- Eliminar o aislar componentes restantes del starter que no formen parte del producto final.
-- Cambiar comentarios decorativos por comentarios cortos y utiles.
-- Corregir encoding de archivos con caracteres rotos.
-- Mantener las configs de campos con nombres semanticos, no codigos numericos.
-
-- Mover reglas de campos editables a una definicion tipada que incluya input type, label, formatter y parser.
-- Agregar validacion con un schema compartido para create/update.
-- Agregar estados UX para guardado fallido y confirmacion de delete.
-- Agregar pruebas unitarias para `useInventory`, transformacion de productos y route handlers criticos.
-
-## Notas de diseno UI
-
-La UI actual es sobria y adecuada para una herramienta operativa: tabla, busqueda, boton de alta y modal. Esto encaja bien con un gestor de inventario que sera usado de forma repetida.
-
-Areas de mejora:
-
-- La barra de busqueda tiene ancho fijo (`w-52`), puede sentirse limitada en pantallas amplias.
-- Las acciones de editar/borrar usan texto; se podrian reforzar con iconos y tooltips.
-- El modal tiene ancho maximo pequeno; si se agregan mas campos como proveedor, categoria o compatibilidades, convendra reorganizarlo.
-- No hay filtros por stock bajo, sin existencia o tipo de producto.
-
-## Resumen tecnico
-
-El proyecto ya tiene una arquitectura entendible y modular para un inventario pequeno/mediano. La busqueda en tiempo real existe y esta del lado del cliente. La conexion a Supabase tambien esta encaminada, especialmente para lectura y actualizacion.
-
-Antes de considerarlo listo para produccion, hay que cerrar tres puntos: que crear y borrar persistan correctamente, que los tipos de datos del formulario coincidan con la base de datos, y que la proteccion de rutas/RLS cubra el inventario real. Despues de eso, la siguiente mejora natural seria limpiar restos del starter y fortalecer validacion, paginacion y busqueda.
+`Branch_changes.md` contiene la bitacora detallada de auditorias, proteccion de
+rutas y limpieza aplicadas durante el desarrollo.
