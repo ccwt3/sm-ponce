@@ -3,11 +3,18 @@ import type {
   CreateProductInput,
   UpdateProductInput,
   ProductListResponse,
+  ProductPage,
   ProductResponse,
   ProductType,
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+
+interface GetProductsOptions {
+  page?: number;
+  search?: string;
+  signal?: AbortSignal;
+}
 
 async function apiFetch<T>(
   path: string,
@@ -29,8 +36,21 @@ async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
-export async function getProducts(): Promise<Product[]> {
-  const response = await apiFetch<ProductListResponse>("/products");
+export async function getProducts({
+  page = 0,
+  search = "",
+  signal,
+}: GetProductsOptions = {}): Promise<ProductPage> {
+  const query = new URLSearchParams({ page: String(page) });
+
+  if (search) {
+    query.set("q", search);
+  }
+
+  const response = await apiFetch<ProductListResponse>(
+    `/products?${query.toString()}`,
+    { signal },
+  );
   return response.data;
 }
 

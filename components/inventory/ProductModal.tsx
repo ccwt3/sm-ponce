@@ -36,7 +36,6 @@ function toProductForm(product: Product): CreateProductInput {
     existencia: product.existencia,
     precio_proveedor: product.precio_proveedor,
     precio_publico: product.precio_publico,
-    user_id: product.user_id,
   };
 }
 

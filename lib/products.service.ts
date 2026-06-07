@@ -2,12 +2,22 @@ import "server-only";
 
 import itemsDatabase from "@/database/items";
 import typesDatabase from "@/database/productTypes";
+import {
+  DEFAULT_PRODUCT_PAGE,
+  PRODUCT_PAGE_SIZE,
+} from "@/lib/products.pagination";
 import { getCurrentUserId } from "@/lib/server-utils";
 import {
   validateCreateProductInput,
   validateUpdateProductInput,
 } from "@/lib/validation/products";
-import type { Product, ProductRow, ProductType, RawProduct } from "@/types";
+import type {
+  Product,
+  ProductPage,
+  ProductRow,
+  ProductType,
+  RawProduct,
+} from "@/types";
 
 export class ProductServiceError extends Error {
   constructor(
@@ -18,13 +28,24 @@ export class ProductServiceError extends Error {
   }
 }
 
+interface GetProductsOptions {
+  page?: number;
+  search?: string;
+}
+
 function productFromRow(
   row: ProductRow,
   productType?: Pick<ProductType, "tipo_de_producto"> | null,
 ): Product {
   return {
-    ...row,
+    id: row.id,
+    nombre: row.nombre,
+    modelo: row.modelo,
+    medida: row.medida,
     tipo_id: productType?.tipo_de_producto ?? "Sin tipo",
+    existencia: row.existencia,
+    precio_proveedor: row.precio_proveedor,
+    precio_publico: row.precio_publico,
   };
 }
 
@@ -45,11 +66,25 @@ async function resolveProductType(
   return productType;
 }
 
-export async function getProductsForDashboard(): Promise<Product[]> {
+export async function getProductsForDashboard(
+  {
+    page = DEFAULT_PRODUCT_PAGE,
+    search = "",
+  }: GetProductsOptions = {},
+): Promise<ProductPage> {
   const userId = await getCurrentUserId();
-  const rawProducts = await itemsDatabase.getAllProducts({ userId });
+  const productPage = await itemsDatabase.getProductsPage({
+    page,
+    search,
+    userId,
+  });
 
-  return rawProducts.map(normalizeProduct);
+  return {
+    products: productPage.products.map(normalizeProduct),
+    page,
+    pageSize: PRODUCT_PAGE_SIZE,
+    hasNextPage: productPage.hasNextPage,
+  };
 }
 
 export async function getProductById(id: string): Promise<Product> {

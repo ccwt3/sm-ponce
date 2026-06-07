@@ -21,8 +21,6 @@ La aplicacion cuenta con un MVP funcional del inventario:
   Supabase.
 
 La ruta principal `/` contiene el inventario y requiere una sesion valida.
-`/protected` se conserva como pagina auxiliar para inspeccionar la sesion
-durante desarrollo.
 
 ## Stack
 
@@ -77,7 +75,7 @@ La aplicacion incluye:
 - Confirmacion por correo.
 - Recuperacion de contrasena.
 - Actualizacion de contrasena.
-- Cierre de sesion compartido entre la pagina principal y `/protected`.
+- Cierre de sesion desde la pagina principal.
 
 Un usuario autenticado que visita una pantalla exclusiva para invitados, como
 `/auth/login`, es redirigido al inventario.
@@ -236,7 +234,6 @@ saltarse RLS. El script administrativo de seed es la excepcion aislada.
 | Ruta | Acceso | Proposito |
 | --- | --- | --- |
 | `/` | Autenticado | Inventario principal. |
-| `/protected` | Autenticado | Diagnostico de claims de la sesion. |
 | `/auth/login` | Invitado | Inicio de sesion. |
 | `/auth/sign-up` | Invitado | Registro. |
 | `/auth/forgot-password` | Invitado | Solicitud de recuperacion. |
@@ -358,7 +355,6 @@ compatibilidad y es una deuda de dominio conocida.
 - Stock `0` se considera vacio, de `1` a `3` bajo y desde `4` disponible.
 - La configuracion, soporte, privacidad y contacto permanecen como puntos de
   extension temporal.
-- `/protected` permanece como herramienta auxiliar de desarrollo.
 
 ## Limitaciones conocidas
 

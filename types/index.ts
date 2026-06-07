@@ -27,7 +27,13 @@ export interface Product {
   precio_publico: number;
   creadoEn?: string;
   actualizadoEn?: string;
-  user_id?: string;
+}
+
+export interface ProductPage {
+  products: Product[];
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
 }
 
 export type ProductWriteInput = Omit<
@@ -47,7 +53,7 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export type ProductListResponse = ApiResponse<Product[]>;
+export type ProductListResponse = ApiResponse<ProductPage>;
 export type ProductResponse = ApiResponse<Product>;
 
 export type StockStatus = "ok" | "low" | "empty";

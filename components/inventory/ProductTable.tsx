@@ -8,6 +8,7 @@ import {
 import { productTableColumns } from "@/lib/contentNormalizer";
 
 interface ProductTableProps {
+  emptyMessage?: string;
   products: Product[];
   onEdit: (product: Product) => void;
   onRequestDelete: (product: Product) => void;
@@ -19,6 +20,7 @@ const editedFields = [
 ] as const;
 
 export function ProductTable({
+  emptyMessage = "No se encontraron productos.",
   products,
   onEdit,
   onRequestDelete,
@@ -26,7 +28,7 @@ export function ProductTable({
   if (products.length === 0) {
     return (
       <div className={inventoryState.empty}>
-        No se encontraron productos.
+        {emptyMessage}
       </div>
     );
   }

@@ -6,6 +6,8 @@ import { Search } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/inventory/ConfirmDeleteDialog";
 import { FloatingErrorNotice } from "@/components/inventory/FloatingErrorNotice";
 import { ProductModal } from "@/components/inventory/ProductModal";
+import { ProductPagination } from "@/components/inventory/ProductPagination";
+import { ProductSearchStatus } from "@/components/inventory/ProductSearchStatus";
 import { ProductTable } from "@/components/inventory/ProductTable";
 import {
   inventoryButton,
@@ -13,23 +15,32 @@ import {
   inventoryState,
 } from "@/components/inventory/styles";
 import { useInventory } from "@/hooks/useInventory";
+import { MAX_PRODUCT_SEARCH_LENGTH } from "@/lib/products.search";
 import { cn } from "@/lib/utils";
-import type { Product } from "@/types";
+import type { Product, ProductPage } from "@/types";
 
 interface InventoryDashboardClientProps {
   initialError?: string | null;
-  initialProducts: Product[];
+  initialPage: ProductPage;
 }
 
 export function InventoryDashboardClient({
   initialError = null,
-  initialProducts,
+  initialPage,
 }: InventoryDashboardClientProps) {
   const {
     products,
+    page,
+    hasNextPage,
+    showPagination,
     search,
     setSearch,
+    isSearchMode,
+    isSearching,
+    isShowingLocalSearchResults,
+    searchError,
     loading,
+    paginationLoading,
     error,
     actionError,
     modal,
@@ -41,7 +52,9 @@ export function InventoryDashboardClient({
     openCreate,
     openEdit,
     closeModal,
-  } = useInventory({ initialError, initialProducts });
+    goToPreviousPage,
+    goToNextPage,
+  } = useInventory({ initialError, initialPage });
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
@@ -81,6 +94,7 @@ export function InventoryDashboardClient({
             <input
               type="text"
               placeholder="Buscar"
+              maxLength={MAX_PRODUCT_SEARCH_LENGTH}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className={cn(inventoryForm.input, "w-52 pl-8 pr-3")}
@@ -105,9 +119,36 @@ export function InventoryDashboardClient({
 
         {!loading && !error && (
           <ProductTable
+            emptyMessage={
+              isShowingLocalSearchResults
+                ? "No hay coincidencias en las paginas cargadas."
+                : undefined
+            }
             products={products}
             onEdit={openEdit}
             onRequestDelete={setProductToDelete}
+          />
+        )}
+
+        <ProductSearchStatus
+          error={searchError}
+          isSearching={isSearching}
+          isSearchMode={isSearchMode}
+          isShowingLocalResults={isShowingLocalSearchResults}
+        />
+
+        {!error && showPagination && (
+          <ProductPagination
+            ariaLabel={
+              isSearchMode
+                ? "Paginacion de resultados de busqueda"
+                : "Paginacion de productos"
+            }
+            page={page}
+            hasNextPage={hasNextPage}
+            loading={paginationLoading}
+            onPreviousPage={goToPreviousPage}
+            onNextPage={goToNextPage}
           />
         )}
       </main>

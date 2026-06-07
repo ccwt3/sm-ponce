@@ -5,12 +5,24 @@ import {
   getProductsForDashboard,
 } from "@/lib/products.service";
 import { errorResponse } from "@/lib/api-errors";
+import { parseProductPage } from "@/lib/products.pagination";
+import { parseProductSearch } from "@/lib/products.search";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const products = await getProductsForDashboard();
+    const page = parseProductPage(req.nextUrl.searchParams.get("page"));
+    const search = parseProductSearch(req.nextUrl.searchParams.get("q"));
 
-    return NextResponse.json({ data: products });
+    if (page === null || search === null) {
+      return NextResponse.json(
+        { error: "Parametros de busqueda invalidos" },
+        { status: 400 },
+      );
+    }
+
+    const productPage = await getProductsForDashboard({ page, search });
+
+    return NextResponse.json({ data: productPage });
   } catch (error) {
     return errorResponse(error, "Error al obtener productos");
   }

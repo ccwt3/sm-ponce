@@ -4,16 +4,25 @@ import { InventoryDashboardClient } from "@/components/inventory/InventoryDashbo
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { getProductsForDashboard } from "@/lib/products.server";
+import {
+  DEFAULT_PRODUCT_PAGE,
+  PRODUCT_PAGE_SIZE,
+} from "@/lib/products.pagination";
 import { AuthRequiredError } from "@/lib/server-utils";
 import { redirect } from "next/navigation";
-import type { Product } from "@/types";
+import type { ProductPage } from "@/types";
 
 async function InventoryDashboardServer() {
   let initialError: string | null = null;
-  let initialProducts: Product[] = [];
+  let initialPage: ProductPage = {
+    products: [],
+    page: DEFAULT_PRODUCT_PAGE,
+    pageSize: PRODUCT_PAGE_SIZE,
+    hasNextPage: false,
+  };
 
   try {
-    initialProducts = await getProductsForDashboard();
+    initialPage = await getProductsForDashboard();
   } catch (error) {
     if (error instanceof AuthRequiredError) {
       redirect("/auth/login");
@@ -25,7 +34,7 @@ async function InventoryDashboardServer() {
   return (
     <InventoryDashboardClient
       initialError={initialError}
-      initialProducts={initialProducts}
+      initialPage={initialPage}
     />
   );
 }

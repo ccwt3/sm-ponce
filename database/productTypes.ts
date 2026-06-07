@@ -63,7 +63,7 @@ class ProductTypesDatabase {
     const { data: newType, error } = await supabase
       .from("tipo")
       .insert({ tipo_de_producto: newProductType, user_id: userId })
-      .select()
+      .select("id, tipo_de_producto")
       .single();
 
     if (error) {
