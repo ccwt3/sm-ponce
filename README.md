@@ -12,7 +12,7 @@ La aplicacion cuenta con un MVP funcional del inventario:
 - Autenticacion por correo y contrasena con Supabase Auth.
 - Proteccion de paginas y endpoints para usuarios autenticados.
 - Redireccion segura al login y retorno a la ruta solicitada.
-- Listado, busqueda, alta, edicion y eliminacion de productos.
+- Listado paginado, busqueda, alta, edicion y eliminacion de productos.
 - Consulta, alta y eliminacion de tipos de producto.
 - Validacion de payloads en servidor con Zod.
 - Confirmacion antes de eliminar productos o tipos.
@@ -45,9 +45,15 @@ Cada producto contiene:
 - Precio proveedor.
 - Precio publico.
 
-La pantalla principal carga inicialmente los productos desde el servidor. La
-busqueda se realiza en tiempo real sobre los productos cargados y considera
-`nombre`, `modelo`, `medida` y el nombre visible del tipo.
+La pantalla principal carga inicialmente la primera pagina de productos desde el
+servidor. El listado usa paginas de 50 productos y controles de anterior /
+siguiente basados en `hasNextPage`.
+
+La busqueda considera `nombre`, `modelo`, `medida` y el nombre visible del
+tipo. En el cliente se normaliza el texto, se limita a 100 caracteres y se
+aplica un debounce de 450 ms. Mientras llega la respuesta remota, la interfaz
+puede mostrar coincidencias locales de las paginas ya cacheadas. La busqueda
+completa se resuelve en servidor mediante `GET /api/products?q=...&page=...`.
 
 Crear y editar productos se realiza desde un modal. El servidor valida campos
 requeridos, convierte entradas numericas, rechaza valores negativos y exige que
@@ -106,7 +112,9 @@ components/inventory/InventoryDashboardClient.tsx
 El hook administra estado interactivo; `lib/api.ts` es el cliente HTTP del
 navegador; los Route Handlers son la frontera HTTP; el servicio concentra
 validacion, autorizacion y reglas de negocio; `database/items.ts` encapsula las
-consultas.
+consultas. `useInventory` tambien administra cache LRU de paginas, busqueda con
+cancelacion de requests obsoletos, paginacion y restauracion de estado en
+errores de borrado optimista.
 
 #### Carga inicial de productos desde servidor
 
@@ -144,9 +152,11 @@ Actualmente los Route Handlers de tipos llaman directamente a
 `lib/products.service.ts`. Ademas, la eliminacion se inicia directamente desde
 `TypeDropdownMenu.tsx` hacia `lib/api.ts`, fuera de `useProductTypes`.
 
-Estas diferencias no rompen el funcionamiento, pero distribuyen validacion,
-reglas y manejo de estado entre componente y Route Handler. Conviene crear un
-servicio de tipos y mover la eliminacion al hook existente.
+Estas diferencias no rompen el funcionamiento. `POST /api/product-types` ya
+valida el texto con Zod, hace `trim` y reutiliza un tipo existente cuando hay
+coincidencia exacta. Aun asi, reglas y manejo de estado siguen repartidos entre
+componente, hook y Route Handler. Conviene crear un servicio de tipos y mover
+la eliminacion al hook existente.
 
 ### Flujos de autenticacion e infraestructura
 
@@ -188,7 +198,7 @@ Route Handlers ni scripts.
 | `components/layout/` | Navegacion y pie de pagina. |
 | `components/ui/` | Primitivas reutilizables de interfaz. |
 | `hooks/` | Estado y operaciones interactivas del cliente. |
-| `lib/` | Cliente HTTP, servicios de dominio, validacion, seguridad, clientes Supabase y utilidades. |
+| `lib/` | Cliente HTTP, servicios de dominio, validacion, seguridad, paginacion, busqueda, cache cliente, clientes Supabase y utilidades. |
 | `database/` | Capa de acceso a datos para las tablas `producto` y `tipo`; no contiene el esquema ni las politicas RLS. |
 | `types/` | Contratos compartidos de dominio y respuestas. |
 | `proxy.ts` | Punto de entrada del proxy de Next para refrescar y proteger sesiones. |
@@ -236,8 +246,10 @@ saltarse RLS. El script administrativo de seed es la excepcion aislada.
 | `/` | Autenticado | Inventario principal. |
 | `/auth/login` | Invitado | Inicio de sesion. |
 | `/auth/sign-up` | Invitado | Registro. |
+| `/auth/sign-up-success` | Invitado | Confirmacion visual posterior al registro. |
 | `/auth/forgot-password` | Invitado | Solicitud de recuperacion. |
 | `/auth/update-password` | Publica dentro del flujo de recuperacion | Cambio de contrasena. |
+| `/auth/error` | Publica | Pantalla de error de autenticacion. |
 | `/auth/confirm` | Publica | Confirmacion de OTP enviado por Supabase. |
 | `/api/products` | Autenticado | Listar y crear productos. |
 | `/api/products/[id]` | Autenticado | Consultar, editar y eliminar un producto. |
@@ -271,6 +283,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=TU_PUBLISHABLE_KEY
 
 # Opcional. Por defecto el cliente usa /api.
 NEXT_PUBLIC_API_URL=/api
+
+# Solo para seed administrativo local.
+SUPABASE_SERVICE_ROLE_KEY=TU_SERVICE_ROLE_KEY
+SEED_USER_ID=UUID_DEL_USUARIO_A_SEEDEAR
 ```
 
 Las variables de Supabase son obligatorias para validar sesiones. Los archivos
@@ -300,6 +316,7 @@ pnpm dev     # Servidor de desarrollo
 pnpm lint    # ESLint
 pnpm build   # Build de produccion y validacion TypeScript
 pnpm start   # Ejecutar el build de produccion
+pnpm seed:products # Seed administrativo local
 ```
 
 Antes de entregar cambios:
@@ -308,6 +325,16 @@ Antes de entregar cambios:
 pnpm lint
 pnpm build
 ```
+
+### Seed administrativo
+
+`pnpm seed:products` ejecuta `scripts/seed-products.ts`. El script usa
+`SUPABASE_SERVICE_ROLE_KEY`, por lo que evita RLS intencionalmente y debe
+tratarse como herramienta administrativa local, no como flujo de runtime.
+
+El seed actual crea 15 tipos de producto y 300 productos para `SEED_USER_ID`.
+Por defecto `DELETE_PREVIOUS_DATA` esta en `true`, asi que borra primero los
+productos y tipos previos de ese usuario.
 
 ## Modelo de datos esperado
 
@@ -349,8 +376,11 @@ compatibilidad y es una deuda de dominio conocida.
 - Los hooks se reservan para estado y comportamiento interactivo del cliente.
 - Los flujos de Supabase Auth usan los clientes oficiales directamente y no
   pasan por la capa `database/*`.
-- La busqueda es local para responder inmediatamente sin peticiones nuevas.
-- La consulta inicial esta limitada a los primeros 50 productos del usuario.
+- La busqueda usa consulta server-side y fallback local sobre paginas cacheadas
+  para responder mientras llega la red.
+- La consulta inicial carga la primera pagina de 50 productos del usuario.
+- El cliente conserva hasta 5 paginas normales y 10 paginas de busqueda en
+  cache LRU durante la sesion de la vista.
 - Los precios se presentan en formato MXN.
 - Stock `0` se considera vacio, de `1` a `3` bajo y desde `4` disponible.
 - La configuracion, soporte, privacidad y contacto permanecen como puntos de
@@ -358,23 +388,49 @@ compatibilidad y es una deuda de dominio conocida.
 
 ## Limitaciones conocidas
 
-- No hay paginacion visible ni busqueda server-side.
-- La busqueda no establece prioridad o ranking entre campos.
+- No hay conteo total de productos, salto a ultima pagina ni selector de tamano
+  de pagina; la paginacion visible solo conoce anterior, siguiente y
+  `hasNextPage`.
+- La busqueda server-side usa coincidencias simples y no establece prioridad o
+  ranking entre campos.
+
+- No hay indices, migraciones ni politicas versionadas que permitan auditar el
+  rendimiento esperado de la busqueda en Supabase desde el repositorio.
+
 - No existe una suite de pruebas automatizadas.
+
 - Los tipos de producto no tienen una capa de servicio y sus Route Handlers
   acceden directamente a `database/productTypes.ts`.
 - La eliminacion de tipos se ejecuta desde el componente en vez de estar
   encapsulada en `useProductTypes`.
+- El backend de tipos reutiliza coincidencias exactas, pero no hay una
+  restriccion unica versionada ni normalizacion case-insensitive garantizada
+  contra duplicados creados por requests directos o carreras.
+
 - `tipo_id` tiene significados distintos entre la fila de base de datos y el
   modelo normalizado de UI.
+
 - El repositorio no contiene migraciones ni definiciones de politicas RLS, por
   lo que esa configuracion no puede auditarse o reproducirse solo desde codigo.
 - `scripts/seed-products.ts` usa una service role y evita RLS de forma
   intencional; debe tratarse como herramienta administrativa, no como flujo de
   la aplicacion.
+
 - Configuracion y enlaces del footer aun no tienen destinos funcionales.
+- El menu de Configuracion conserva una accion temporal con `console.log`.
+
+- El proxy conserva `/login` como ruta publica/guest-only heredada, aunque no
+  existe una pagina `app/login` en la codebase actual.
+- Persisten componentes heredados sin consumidor directo en las rutas actuales:
+  `auth-button`, `logout-button`, `env-var-warning` y `theme-switcher`.
+
 - La eliminacion de un tipo relacionado con productos depende de las
   restricciones definidas en Supabase.
+
+- La estrategia de dependencias Radix mezcla paquetes especificos
+  `@radix-ui/*` con el paquete monolitico `radix-ui`.
+- `eslint-config-next` esta fijado en 15.3.1 mientras el lockfile resuelve
+  Next.js 16.2.4.
 
 ## Calidad del codigo
 
@@ -384,5 +440,7 @@ consultas sensibles en el servidor. Los componentes de autenticacion cliente
 si acceden directamente a Supabase Auth mediante `lib/supabase/client.ts`,
 lo cual es una excepcion deliberada y apropiada para el manejo de sesion.
 
-`Branch_changes.md` contiene la bitacora detallada de auditorias, proteccion de
-rutas y limpieza aplicadas durante el desarrollo.
+`Branch_changes.md` contiene la bitacora historica de auditorias, proteccion de
+rutas y limpiezas aplicadas durante el desarrollo. Algunas secciones describen
+estados anteriores; para la foto actual de arquitectura y deuda tecnica, usa
+`Branch_Status.md`.
