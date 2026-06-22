@@ -82,22 +82,104 @@ La aplicacion incluye:
 Un usuario autenticado que visita una pantalla exclusiva para invitados, como
 `/auth/login`, es redirigido al inventario.
 
-## Arquitectura
+## Arquitectura actual
 
-El flujo principal mantiene separadas la interfaz, la comunicacion HTTP, las
-reglas de negocio y el acceso a datos:
+La aplicacion usa una arquitectura por capas, pero no toda operacion debe
+recorrer una unica cadena `componente -> hook -> lib/api -> /api -> database`.
+El flujo correcto depende de donde comienza la operacion.
+
+### Flujos de dominio
+
+#### CRUD de productos iniciado en el navegador
+
+Este es el flujo mas completo y consistente de la aplicacion:
 
 ```txt
-app/page.tsx
-  -> components/inventory/InventoryDashboardClient.tsx
-    -> hooks/useInventory.ts
-      -> lib/api.ts
-        -> app/api/*
-          -> lib/products.service.ts
-            -> database/*
-              -> lib/supabase/server.ts
-                -> Supabase + RLS
+components/inventory/InventoryDashboardClient.tsx
+  -> hooks/useInventory.ts
+    -> lib/api.ts
+      -> app/api/products/*
+        -> lib/products.service.ts
+          -> database/items.ts
+            -> lib/supabase/server.ts
+              -> Supabase PostgreSQL + RLS
 ```
+
+El hook administra estado interactivo; `lib/api.ts` es el cliente HTTP del
+navegador; los Route Handlers son la frontera HTTP; el servicio concentra
+validacion, autorizacion y reglas de negocio; `database/items.ts` encapsula las
+consultas.
+
+#### Carga inicial de productos desde servidor
+
+La primera carga evita una llamada HTTP interna:
+
+```txt
+app/page.tsx (Server Component)
+  -> lib/products.server.ts
+    -> lib/products.service.ts
+      -> database/items.ts
+        -> lib/supabase/server.ts
+          -> Supabase PostgreSQL + RLS
+```
+
+Este flujo no necesita hook ni `/api`. Un Server Component debe llamar a una
+funcion server-only o servicio directamente, en lugar de hacer `fetch` contra
+un endpoint de la misma aplicacion.
+
+#### Tipos de producto
+
+Los tipos siguen parcialmente la arquitectura objetivo:
+
+```txt
+components/inventory/TypeDropdownMenu.tsx
+  -> hooks/useProductTypes.ts (listar y crear)
+  -> lib/api.ts
+  -> app/api/product-types/*
+  -> database/productTypes.ts
+  -> lib/supabase/server.ts
+  -> Supabase PostgreSQL + RLS
+```
+
+Actualmente los Route Handlers de tipos llaman directamente a
+`database/productTypes.ts`; no existe un servicio de tipos equivalente a
+`lib/products.service.ts`. Ademas, la eliminacion se inicia directamente desde
+`TypeDropdownMenu.tsx` hacia `lib/api.ts`, fuera de `useProductTypes`.
+
+Estas diferencias no rompen el funcionamiento, pero distribuyen validacion,
+reglas y manejo de estado entre componente y Route Handler. Conviene crear un
+servicio de tipos y mover la eliminacion al hook existente.
+
+### Flujos de autenticacion e infraestructura
+
+Supabase Auth usa flujos distintos al CRUD de dominio:
+
+```txt
+Formularios cliente -> lib/supabase/client.ts -> Supabase Auth
+LogoutButton/NavbarMenu -> hooks/useLogout.ts -> lib/supabase/client.ts -> Supabase Auth
+Server Components y /auth/confirm -> lib/supabase/server.ts -> Supabase Auth
+proxy.ts -> lib/supabase/proxy.ts -> Supabase Auth
+```
+
+Estos accesos directos son apropiados: Supabase Auth administra sesion y
+cookies mediante sus clientes oficiales, y no necesita pasar por
+`database/*`. Los Server Components tampoco usan hooks de cliente. Extraer
+adaptadores o hooks adicionales solo seria recomendable si se necesita
+reutilizacion, pruebas aisladas o una politica centralizada de errores.
+
+### Regla arquitectonica recomendada
+
+| Punto de entrada | Flujo recomendado |
+| --- | --- |
+| Interaccion cliente de dominio | Componente -> hook/controlador -> `lib/api.ts` -> Route Handler -> servicio -> `database/*` -> Supabase. |
+| Server Component de dominio | Server Component -> modulo server-only/servicio -> `database/*` -> Supabase. |
+| Supabase Auth en cliente | Componente o hook -> `lib/supabase/client.ts` -> Supabase Auth. |
+| Auth y proteccion en servidor | Route Handler, Server Component o proxy -> cliente Supabase server/proxy -> Supabase Auth. |
+| Scripts administrativos | Script aislado -> cliente administrativo -> Supabase; fuera del runtime y con credenciales protegidas. |
+
+Los hooks no son una capa obligatoria. Son utiles para estado, efectos y
+comportamiento reutilizable del navegador; no aplican a Server Components,
+Route Handlers ni scripts.
 
 ### Responsabilidades por directorio
 
@@ -108,8 +190,8 @@ app/page.tsx
 | `components/layout/` | Navegacion y pie de pagina. |
 | `components/ui/` | Primitivas reutilizables de interfaz. |
 | `hooks/` | Estado y operaciones interactivas del cliente. |
-| `lib/` | Cliente API, servicios, validacion, seguridad y utilidades. |
-| `database/` | Consultas a las tablas `producto` y `tipo`. |
+| `lib/` | Cliente HTTP, servicios de dominio, validacion, seguridad, clientes Supabase y utilidades. |
+| `database/` | Capa de acceso a datos para las tablas `producto` y `tipo`; no contiene el esquema ni las politicas RLS. |
 | `types/` | Contratos compartidos de dominio y respuestas. |
 | `proxy.ts` | Punto de entrada del proxy de Next para refrescar y proteger sesiones. |
 
@@ -146,7 +228,8 @@ Los servicios y endpoints no dependen solamente del proxy:
 
 Las politicas RLS de Supabase son la ultima frontera de autorizacion y deben
 permanecer activas para `producto` y `tipo`. El codigo usa el cliente de usuario
-con cookies de sesion; no utiliza una service role para saltarse RLS.
+con cookies de sesion durante el runtime; no utiliza una service role para
+saltarse RLS. El script administrativo de seed es la excepcion aislada.
 
 ## Rutas
 
@@ -264,6 +347,11 @@ compatibilidad y es una deuda de dominio conocida.
 
 - La primera carga ocurre en un Server Component y entrega datos iniciales al
   cliente.
+- Los Server Components llaman servicios server-only directamente; no hacen
+  peticiones HTTP a los Route Handlers de la misma aplicacion.
+- Los hooks se reservan para estado y comportamiento interactivo del cliente.
+- Los flujos de Supabase Auth usan los clientes oficiales directamente y no
+  pasan por la capa `database/*`.
 - La busqueda es local para responder inmediatamente sin peticiones nuevas.
 - La consulta inicial esta limitada a los primeros 50 productos del usuario.
 - Los precios se presentan en formato MXN.
@@ -277,8 +365,17 @@ compatibilidad y es una deuda de dominio conocida.
 - No hay paginacion visible ni busqueda server-side.
 - La busqueda no establece prioridad o ranking entre campos.
 - No existe una suite de pruebas automatizadas.
+- Los tipos de producto no tienen una capa de servicio y sus Route Handlers
+  acceden directamente a `database/productTypes.ts`.
+- La eliminacion de tipos se ejecuta desde el componente en vez de estar
+  encapsulada en `useProductTypes`.
 - `tipo_id` tiene significados distintos entre la fila de base de datos y el
   modelo normalizado de UI.
+- El repositorio no contiene migraciones ni definiciones de politicas RLS, por
+  lo que esa configuracion no puede auditarse o reproducirse solo desde codigo.
+- `scripts/seed-products.ts` usa una service role y evita RLS de forma
+  intencional; debe tratarse como herramienta administrativa, no como flujo de
+  la aplicacion.
 - Configuracion y enlaces del footer aun no tienen destinos funcionales.
 - La eliminacion de un tipo relacionado con productos depende de las
   restricciones definidas en Supabase.
@@ -286,8 +383,10 @@ compatibilidad y es una deuda de dominio conocida.
 ## Calidad del codigo
 
 El proyecto activa TypeScript estricto, `noUnusedLocals` y
-`noUnusedParameters`. La arquitectura evita que los componentes accedan
-directamente a Supabase y mantiene las operaciones sensibles en el servidor.
+`noUnusedParameters`. El dominio de inventario mantiene las escrituras y
+consultas sensibles en el servidor. Los componentes de autenticacion cliente
+si acceden directamente a Supabase Auth mediante `lib/supabase/client.ts`,
+lo cual es una excepcion deliberada y apropiada para el manejo de sesion.
 
 `Branch_changes.md` contiene la bitacora detallada de auditorias, proteccion de
 rutas y limpieza aplicadas durante el desarrollo.

@@ -1,306 +1,348 @@
-# Branch Changes - Estado actual de la aplicacion
+# Branch Status - Auditoria de arquitectura
 
-## Resumen general
+Fecha de auditoria: 13 de junio de 2026
 
-La aplicacion ya tiene una base funcional para un gestor de inventario de motorefacciones: existe una pantalla principal, una tabla de productos, una barra de busqueda en tiempo real, un modal para crear/editar, comunicacion con endpoints internos de Next.js y una capa de acceso a Supabase.
+## Resumen ejecutivo
 
-El proyecto esta cerca de representar visualmente lo que pidio el cliente, pero todavia no esta listo como sistema completo de produccion. La arquitectura principal esta encaminada, aunque hay partes criticas del CRUD que necesitan correccion para que los datos se persistan correctamente y para que la seguridad cubra el inventario real.
+La aplicacion tiene un MVP funcional de inventario y una arquitectura por capas
+mayormente saludable. El CRUD de productos iniciado desde el navegador es el
+flujo mejor estructurado: separa UI, estado cliente, cliente HTTP, frontera API,
+servicio de dominio, acceso a datos y Supabase.
 
-## Que pidio el cliente
+La aplicacion completa no sigue, ni deberia seguir, una unica cadena rigida:
 
-El cliente pidio una aplicacion Next.js para una refaccionaria de motocicletas que permita gestionar productos con:
+```txt
+componente -> hook -> lib/api -> /api -> database -> Supabase
+```
 
-- Nombre.
-- Modelo compatible.
-- Medida.
-- Tipo de producto.
-- Existencia.
-- Precio base o precio proveedor.
-- Precio de venta o precio publico.
-- Acciones CRUD: crear, editar y eliminar.
-- Busqueda en tiempo real.
-- Busqueda por nombre, modelo y tipo.
-- Base de datos y seguridad con Supabase y RLS.
+Esa cadena aplica a interacciones de dominio iniciadas en componentes cliente,
+pero no a Server Components, Route Handlers, proxy, autenticacion ni scripts.
+En esos casos saltar hooks o `/api` es correcto.
 
-## Estado actual
+La discrepancia arquitectonica principal esta en tipos de producto: sus Route
+Handlers acceden directamente a `database/productTypes.ts`, sin una capa de
+servicio, y la eliminacion se ejecuta desde el componente fuera del hook
+`useProductTypes`.
 
-### Pantalla principal
+## Estado tecnico verificado
 
-La pantalla principal del inventario esta en `app/page.tsx`.
+| Verificacion | Resultado |
+| --- | --- |
+| `npm run lint` | Correcto, sin errores. |
+| `npm run build` | Correcto, compila Next.js y TypeScript. |
+| TypeScript estricto | Activado. |
+| Pruebas automatizadas | No existen. |
+| Migraciones y RLS versionadas | No existen en el repositorio. |
+| Estado Git durante auditoria | Rama `hand-made`; `scripts/` aparece sin seguimiento. |
 
-Actualmente muestra:
+El build verificado usa Next.js 16.2.4 y genera correctamente las paginas,
+Route Handlers y proxy.
 
-- Navbar de Motorefacciones.
-- Barra de busqueda.
-- Boton para agregar producto.
-- Tabla de productos.
-- Modal de crear/editar.
-- Footer.
+## Arquitectura objetivo
 
-Estado: funcional como interfaz base.
+La arquitectura recomendable no es una sola tuberia, sino un conjunto de
+flujos segun el punto de entrada.
 
-### Flujo de datos
+### Interaccion cliente de dominio
 
-El flujo principal ya esta separado por capas:
+```txt
+Componente cliente
+  -> hook o controlador cliente
+    -> lib/api.ts
+      -> app/api/*
+        -> servicio de dominio
+          -> database/*
+            -> lib/supabase/server.ts
+              -> Supabase PostgreSQL + RLS
+```
+
+Este flujo mantiene credenciales, autorizacion, validacion y consultas fuera
+del navegador.
+
+### Renderizado y carga desde servidor
+
+```txt
+Server Component
+  -> modulo server-only o servicio
+    -> database/*
+      -> lib/supabase/server.ts
+        -> Supabase PostgreSQL + RLS
+```
+
+No se recomienda que un Server Component haga `fetch` a `/api` dentro de la
+misma aplicacion. La llamada directa al servicio evita HTTP innecesario y
+conserva la separacion de responsabilidades.
+
+### Autenticacion
+
+```txt
+Componente o hook cliente -> lib/supabase/client.ts -> Supabase Auth
+Server Component o Route Handler -> lib/supabase/server.ts -> Supabase Auth
+proxy.ts -> lib/supabase/proxy.ts -> Supabase Auth
+```
+
+Supabase Auth no usa las tablas de dominio mediante `database/*`; sus clientes
+oficiales son la capa de integracion.
+
+## Flujos reales auditados
+
+### 1. Carga inicial de productos
 
 ```txt
 app/page.tsx
-  -> hooks/useInventory.ts
+  -> lib/products.server.ts
+    -> lib/products.service.ts
+      -> lib/server-utils.ts para obtener el usuario
+      -> database/items.ts
+        -> lib/supabase/server.ts
+          -> tabla producto + relacion tipo + RLS
+```
+
+Evaluacion: correcto.
+
+No usa hook, `lib/api.ts` ni `/api` porque empieza en un Server Component. Esta
+es una excepcion necesaria, no una violacion.
+
+### 2. Listar productos desde el navegador
+
+```txt
+InventoryDashboardClient
+  -> useInventory
+    -> lib/api.ts:getProducts
+      -> GET /api/products
+        -> lib/products.service.ts:getProductsForDashboard
+          -> database/items.ts
+            -> Supabase
+```
+
+Evaluacion: correcto y consistente con la arquitectura objetivo.
+
+El hook solo usa este flujo cuando no recibe productos iniciales o cuando se
+solicita `refetch`.
+
+### 3. Crear, editar y eliminar productos
+
+```txt
+InventoryDashboardClient/ProductModal
+  -> useInventory
     -> lib/api.ts
-      -> app/api/products/route.ts
-      -> app/api/products/[id]/route.ts
-        -> database/items.ts
+      -> POST/PUT/DELETE /api/products/*
+        -> lib/products.service.ts
+          -> validacion Zod
+          -> usuario autenticado y asignacion/filtro por user_id
+          -> resolucion del tipo
+          -> database/items.ts
+            -> Supabase
+```
+
+Evaluacion: correcto y es el flujo de referencia del proyecto.
+
+Las reglas relevantes estan en el servicio: validacion, autorizacion,
+normalizacion del tipo y errores 404. El borrado de UI es optimista y se
+revierte si la operacion falla.
+
+### 4. Listar y crear tipos de producto
+
+```txt
+TypeDropdownMenu
+  -> useProductTypes
+    -> lib/api.ts
+      -> GET/POST /api/product-types
+        -> validacion y autorizacion dentro del Route Handler
+        -> database/productTypes.ts
           -> Supabase
 ```
 
-Estado: bien encaminado y legible.
+Evaluacion: funcional, pero parcialmente inconsistente.
 
-### Base de datos
+Falta una capa `lib/product-types.service.ts`. Como consecuencia, el Route
+Handler contiene reglas de negocio como validacion, deteccion de duplicados y
+asignacion de propietario. Esas reglas no pueden reutilizarse facilmente desde
+otro punto de entrada server-side y quedan acopladas a Next.js.
 
-La capa `database/items.ts` ya conecta con Supabase usando el cliente server.
+Recomendacion: crear un servicio de tipos que concentre listar, crear y eliminar
+tipos; dejar los Route Handlers limitados a traducir HTTP.
 
-Actualmente consulta la tabla `producto` y obtiene tambien la relacion `tipo(tipo_de_producto)`.
-
-Estado: parcialmente funcional.
-
-## Funcionalidades funcionales
-
-### Listar productos
-
-Funciona de forma general.
-
-`GET /api/products` consulta Supabase, transforma el campo relacional `tipo` y devuelve productos a la UI.
-
-Limitaciones:
-
-- Solo trae los primeros 50 productos.
-- No hay paginacion real.
-- No hay busqueda server-side.
-
-Estado: funcional para inventario pequeno o pruebas.
-
-### Busqueda en tiempo real
-
-Funciona del lado del cliente.
-
-Al escribir en la barra de busqueda, `useInventory` filtra inmediatamente los productos cargados y actualiza la tabla sin hacer una nueva peticion.
-
-Campos buscados actualmente:
-
-```ts
-["nombre", "medida", "modelo", "tipo_id"]
-```
-
-Estado: funcional, pero no coincide al 100% con el criterio exacto solicitado.
-
-El cliente pidio busqueda por:
+### 5. Eliminar tipos de producto
 
 ```txt
-nombre -> modelo -> tipo
+TypeDropdownMenu
+  -> lib/api.ts:deleteProductType
+    -> DELETE /api/product-types/[id]
+      -> database/productTypes.ts
+        -> Supabase
 ```
 
-La app actualmente tambien busca por `medida` y no ordena resultados por prioridad de campo. Es decir, encuentra coincidencias, pero no aplica una prioridad real.
+Evaluacion: funcional, con dos discrepancias.
 
-### Mostrar tabla de inventario
+- La accion no pasa por `useProductTypes`, aunque ese hook ya administra la
+  coleccion, errores, creacion y `refetch`.
+- El Route Handler no pasa por un servicio de dominio.
 
-Funciona.
+Recomendacion: mover `deleteProductType` y la actualizacion de estado al hook,
+y hacer que el endpoint delegue en el servicio de tipos.
 
-La tabla renderiza dinamicamente columnas desde `databaseFields`:
+### 6. Autenticacion cliente
 
-- Nombre.
-- Modelo.
-- Medida.
-- Tipo.
-- Existencia.
-- Precio proveedor.
-- Precio publico.
-- Acciones.
-
-Estado: funcional.
-
-### Badge de existencia
-
-Funciona.
-
-`StockBadge` marca visualmente la existencia:
-
-- `0`: sin existencia.
-- `1 a 3`: stock bajo.
-- `4 o mas`: stock correcto.
-
-Estado: funcional y util para inventario.
-
-### Modal de crear y editar
-
-El modal abre correctamente y carga datos cuando se edita un producto.
-
-Estado: visualmente funcional, pero con problemas de datos.
-
-Limitaciones:
-
-- Todos los campos son inputs de texto.
-- Existencia y precios se envian como string aunque el tipo esperado sea number.
-- No hay validacion fuerte.
-- No hay select real para tipo de producto.
-
-### Actualizar productos
-
-La ruta `PUT /api/products/[id]` existe y llama a Supabase mediante `ItemsDatabase.updateProduct()`.
-
-Estado: probablemente funcional en casos simples, pero requiere limpieza y validacion.
-
-Riesgos:
-
-- Hay `console.log` activos.
-- Puede mandar numeros como strings.
-- No valida rangos ni estructura.
-
-## Funcionalidades pendientes o incompletas
-
-### Crear producto
-
-Esta implementado, pero tiene un bug importante.
-
-En `database/items.ts`, `createProduct()` usa:
-
-```ts
-.select()
-.single()
+```txt
+LoginForm/SignUpForm/ForgotPasswordForm/UpdatePasswordForm
+  -> lib/supabase/client.ts
+    -> Supabase Auth
 ```
 
-Con `.single()`, Supabase devuelve un objeto. Pero el codigo retorna:
+Evaluacion: correcto.
 
-```ts
-return product[0];
+No necesita `lib/api.ts`, `/api`, servicio de dominio ni `database/*`.
+Agregar un hook por formulario no aportaria valor por si solo. Un adaptador
+`lib/auth.client.ts` podria ser util en el futuro para unificar traduccion de
+errores, telemetria o pruebas, pero no es una correccion obligatoria.
+
+### 7. Cierre de sesion
+
+```txt
+LogoutButton/NavbarMenu
+  -> useLogout
+    -> lib/supabase/client.ts
+      -> Supabase Auth
 ```
 
-Eso probablemente rompe la creacion o devuelve `undefined`.
+Evaluacion: correcto. El hook es util porque la misma accion se reutiliza en
+dos componentes y tambien centraliza redireccion y refresco.
 
-Estado: implementado, pero necesita correccion antes de considerarse funcional.
+### 8. Autenticacion y proteccion server-side
 
-### Eliminar producto
+Flujos auditados:
 
-No esta funcional a nivel de base de datos.
+```txt
+proxy.ts -> lib/supabase/proxy.ts -> Supabase Auth
+app/auth/confirm/route.ts -> lib/supabase/server.ts -> Supabase Auth
+app/protected/page.tsx -> lib/supabase/server.ts -> Supabase Auth
+components/auth-button.tsx -> lib/supabase/server.ts -> Supabase Auth
+lib/server-utils.ts -> lib/supabase/server.ts -> Supabase Auth
+```
 
-La UI elimina el producto localmente de forma optimista, pero el endpoint `DELETE /api/products/[id]` solo responde con el id. No llama a Supabase y no elimina el registro real.
+Evaluacion: correcto.
 
-Resultado actual:
+Estos puntos de entrada son server-side y no deben usar hooks cliente. El proxy
+renueva sesion, protege rutas y responde `401` para endpoints anonimos. Los
+servicios vuelven a validar al usuario y no dependen exclusivamente del proxy.
 
-- El producto desaparece visualmente.
-- Al recargar o volver a consultar, el producto puede reaparecer.
+### 9. Script de seed
 
-Estado: pendiente critico.
+```txt
+scripts/seed-products.ts
+  -> @supabase/supabase-js con SUPABASE_SERVICE_ROLE_KEY
+    -> Supabase directamente
+```
 
-### Seguridad del inventario
+Evaluacion: apropiado solo como herramienta administrativa aislada.
 
-Supabase Auth y el proxy existen, pero la ruta principal `/` queda excluida de la proteccion.
+La service role evita RLS intencionalmente. El script no pertenece al runtime
+de la aplicacion, no debe importarse desde `app`, `components`, `hooks`, `lib`
+o `database`, y su clave nunca debe exponerse al navegador.
 
-El proxy redirige a login si no hay usuario, excepto en `/`, `/login` y `/auth/*`.
+## Cumplimiento por capa
 
-Como el inventario vive actualmente en `/`, la pantalla principal no queda protegida por esa regla.
+| Area | Hook cuando aplica | Cliente HTTP/API cuando aplica | Servicio de dominio | Acceso a datos aislado | Evaluacion |
+| --- | --- | --- | --- | --- | --- |
+| Productos, carga server | No aplica | No aplica | Si | Si | Correcto |
+| Productos, CRUD cliente | Si | Si | Si | Si | Correcto |
+| Tipos, listar/crear | Si | Si | No | Si | Mejorable |
+| Tipos, eliminar | No, aunque conviene | Si | No | Si | Mejorable |
+| Auth cliente | Opcional | No aplica | No aplica | No aplica | Correcto |
+| Auth server/proxy | No aplica | No aplica | No aplica | No aplica | Correcto |
+| Seed administrativo | No aplica | No aplica | No aplica | Acceso directo intencional | Fuera del runtime |
 
-Estado: parcialmente implementado, pendiente para produccion.
+## Respuesta a las preguntas arquitectonicas
 
-### RLS
+### Se sigue `componente -> hook -> lib/api -> /api -> database -> Supabase`?
 
-El proyecto esta preparado para depender de RLS de Supabase, pero desde el codigo no se puede confirmar si las policies ya estan completas.
+Solo en parte. El CRUD cliente de productos sigue una version mas completa que
+incluye `lib/products.service.ts` entre `/api` y `database`.
 
-Estado: dependiente de configuracion externa en Supabase.
+La carga inicial server-side, Auth, proxy y scripts no siguen esa cadena porque
+sus puntos de entrada y responsabilidades son distintos.
 
-### Tipo de producto
+### Toda la aplicacion deberia seguirla al pie de la letra?
 
-La app muestra el tipo como texto dentro de `tipo_id`, pero el nombre del campo sugiere que deberia ser un identificador.
+No. Forzar hooks en Server Components o hacer que el servidor llame a su propio
+`/api` agregaria complejidad y costo sin mejorar la separacion.
 
-Estado: funcional visualmente, pero confuso en modelo de datos.
+Lo importante es conservar estas fronteras:
 
-Recomendacion:
+- Los componentes cliente de dominio no consultan tablas Supabase directamente.
+- Las reglas de dominio viven en servicios, no en componentes ni Route
+  Handlers.
+- Las consultas de dominio viven en `database/*`.
+- Las operaciones server-side validan usuario y propietario.
+- Supabase Auth usa los clientes apropiados para cliente, servidor y proxy.
 
-- Usar `tipo_id` para el id real.
-- Usar `tipo_nombre` o `tipo` para el texto visible.
+### Si server/client no necesita hook, esta bien no usarlo?
 
-### Validacion de formularios
+Si. Un hook es una herramienta de React cliente para estado, efectos y
+reutilizacion. No es una capa universal.
 
-Actualmente es minima.
+- Server Components, Route Handlers y proxy no usan hooks cliente.
+- Un componente cliente sencillo puede llamar a un adaptador directamente si
+  no administra estado complejo ni comparte comportamiento.
+- Cuando ya existe un hook que representa el dominio cliente, como
+  `useProductTypes`, conviene mantener dentro de el todas las operaciones
+  relacionadas, incluida la eliminacion.
 
-Solo se valida que `nombre` no este vacio en el modal y que `nombre` y `modelo` existan en el POST.
+## Fortalezas actuales
 
-Pendiente:
+- El navegador no accede directamente a las tablas `producto` o `tipo`.
+- El CRUD de productos tiene una capa de servicio clara.
+- Las entradas de productos se validan con Zod en servidor.
+- `user_id` se obtiene de la sesion y se usa en consultas y mutaciones.
+- La carga inicial server-side evita una llamada HTTP interna.
+- El proxy y los servicios aplican proteccion complementaria.
+- Los clientes Supabase estan separados para navegador, servidor y proxy.
+- Lint, TypeScript y build pasan.
 
-- Validar que existencia sea numero entero.
-- Validar que precios sean numeros positivos.
-- Validar campos requeridos.
-- Validar tipo de producto.
-- Mostrar errores especificos al usuario.
+## Riesgos y deuda arquitectonica
 
-Estado: pendiente.
+### Prioridad media
 
-### Limpieza del starter
+1. Falta `lib/product-types.service.ts`; reglas de tipos viven en Route
+   Handlers.
+2. La eliminacion de tipos queda fuera de `useProductTypes`.
+3. `tipo_id` significa id en base de datos, pero nombre visible en el modelo
+   que consume la UI. Esto debilita contratos y aumenta el riesgo de errores.
+4. No hay pruebas automatizadas para servicios, Route Handlers, hooks o flujos
+   de autorizacion.
+5. No hay migraciones, esquema generado ni politicas RLS versionadas. La
+   configuracion real de Supabase no puede verificarse desde el repositorio.
 
-Todavia existen archivos y componentes heredados del starter Next.js/Supabase:
+### Prioridad baja
 
-- Tutoriales.
-- Pagina `protected`.
-- Pagina `instruments`.
-- Deploy button.
-- Logos.
-- Textos en ingles.
-- Componentes que no pertenecen al flujo principal.
+1. Cada operacion de producto puede crear un cliente Supabase para validar al
+   usuario y otro para consultar datos. Funciona, pero podria centralizarse un
+   contexto por solicitud si el volumen lo exige.
+2. Los formularios Auth llaman al SDK desde cada componente. Es aceptable,
+   aunque un adaptador comun facilitaria mensajes y pruebas uniformes.
+3. `database/*` funciona como repositorio de datos; renombrarlo no es necesario,
+   pero documentar esa responsabilidad evita confundirlo con migraciones o
+   esquema.
 
-Estado: pendiente de limpieza.
+## Prioridades recomendadas
 
-### Encoding y comentarios
-
-Hay varios comentarios y textos con caracteres rotos por encoding.
-
-Ejemplos visibles:
-
-- `ConfiguraciÃ³n`
-- `Cargando productosâ€¦`
-- Comentarios decorativos con simbolos corruptos.
-
-Estado: pendiente de limpieza.
-
-## Que tan cerca esta del pedido del cliente
-
-Estimacion general: 65%.
-
-La app ya tiene la forma principal del producto solicitado y el flujo tecnico base esta bien encaminado. Se puede ver el inventario, buscar en tiempo real y trabajar con una interfaz parecida a la esperada.
-
-Sin embargo, para cumplir el pedido del cliente de forma confiable, faltan correcciones importantes en persistencia, seguridad y validacion.
-
-## Cumplimiento por requerimiento
-
-| Requerimiento | Estado | Comentario |
-| --- | --- | --- |
-| Next.js + React | Cumplido | App Router y componentes React funcionando. |
-| Inventario para refaccionaria de motos | Parcial | La UI y campos apuntan al dominio correcto. |
-| Nombre | Cumplido | Existe en tipos, tabla, modal y busqueda. |
-| Modelo | Cumplido | Existe en tipos, tabla, modal y busqueda. |
-| Medida | Cumplido | Existe en tipos, tabla y modal. |
-| Tipo de producto | Parcial | Se muestra, pero `tipo_id` mezcla id y texto visible. |
-| Existencia | Cumplido parcial | Se muestra con badge, pero input envia string. |
-| Precio base/proveedor | Cumplido parcial | Se muestra con formato, pero input envia string. |
-| Precio venta/publico | Cumplido parcial | Se muestra con formato, pero input envia string. |
-| Crear producto | Pendiente critico | Hay bug con `.single()` y `product[0]`. |
-| Editar producto | Parcial | Endpoint existe, falta validacion y normalizacion. |
-| Eliminar producto | Pendiente critico | Solo borra en UI, no en Supabase. |
-| Busqueda en tiempo real | Cumplido parcial | Filtra al escribir, pero incluye `medida` y no prioriza campos. |
-| Supabase | Parcial | Clientes y queries existen. |
-| Seguridad con RLS | Parcial | Depende de policies externas; `/` no esta protegida por proxy. |
-
-## Prioridad recomendada para llegar a MVP
-
-1. Corregir `createProduct()` para retornar correctamente el objeto creado.
-2. Implementar eliminacion real en Supabase.
-3. Convertir existencia y precios a numeros antes de enviar al backend.
-4. Proteger la ruta principal del inventario.
-5. Ajustar busqueda exactamente a `nombre`, `modelo` y `tipo`.
-6. Separar `tipo_id` de `tipo_nombre`.
-7. Agregar validacion basica de datos en frontend y endpoints.
-8. Limpiar restos del starter y textos con encoding roto.
+1. Crear `lib/product-types.service.ts` y hacer que ambos endpoints de tipos lo
+   utilicen.
+2. Encapsular eliminacion de tipos dentro de `useProductTypes`.
+3. Separar `tipo_id` y `tipo_nombre` en los contratos de dominio/UI.
+4. Agregar pruebas unitarias para servicios y validaciones, y pruebas de
+   integracion para Route Handlers autorizados/no autorizados.
+5. Versionar migraciones y politicas RLS de Supabase.
+6. Mantener el seed aislado, documentar su ejecucion y proteger la service role.
 
 ## Conclusion
 
-La rama actual tiene una buena base de inventario y ya permite entender como se conectan las piezas principales. No esta en cero: la estructura modular existe, la pantalla principal ya se comporta como herramienta de inventario y la busqueda en tiempo real ya esta implementada.
+El estado arquitectonico general es bueno para un MVP. El flujo de productos
+puede tomarse como referencia para nuevas funcionalidades de dominio. No se
+debe forzar una cadena unica sobre toda la aplicacion: las excepciones de
+Server Components y Supabase Auth son correctas.
 
-El punto debil no es la interfaz base, sino la confiabilidad del CRUD y la seguridad final. Corrigiendo crear, eliminar, tipos numericos y proteccion de ruta, la app quedaria mucho mas cerca de un MVP real para el cliente.
+La mejora mas valiosa es alinear tipos de producto con la capa de servicio ya
+usada por productos. Despues, la mayor deuda no es de estructura de carpetas,
+sino de contratos de dominio, pruebas y configuracion de Supabase versionada.
