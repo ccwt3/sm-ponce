@@ -300,3 +300,16 @@ Resumen corto:
   id cuando normaliza respuestas despues de actualizar.
 
 [Estado: Canario Activo]
+
+## Reporte Fase [4]
+
+Resumen corto:
+
+- Se creo `lib/product-types.service.ts` para concentrar autenticacion,
+  validacion, normalizacion, reutilizacion, creacion y eliminacion de tipos.
+- Los Route Handlers de tipos quedaron como traductores HTTP y ya no obtienen
+  usuario ni llaman directamente al repositorio.
+- `database/productTypes.ts` quedo enfocado en acceso a Supabase, sin reglas de
+  negocio de tipos.
+
+[Estado: Canario Activo]

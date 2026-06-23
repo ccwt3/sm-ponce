@@ -11,18 +11,12 @@ class ProductTypesDatabase {
     value: string,
     userId: string,
   ): Promise<ProductType | null> {
-    const normalizedValue = value.trim();
-
-    if (!normalizedValue) {
-      return null;
-    }
-
     const supabase = await this.getSupabaseClient();
 
     const { data: type, error } = await supabase
       .from("tipo")
       .select("id, tipo_de_producto")
-      .eq("tipo_de_producto", normalizedValue)
+      .eq("tipo_de_producto", value)
       .eq("user_id", userId)
       .limit(1)
       .maybeSingle();

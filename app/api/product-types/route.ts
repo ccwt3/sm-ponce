@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import typesDatabase from "@/database/productTypes";
 import { errorResponse } from "@/lib/api-errors";
-import { getCurrentUserId } from "@/lib/server-utils";
-import { validateProductTypeInput } from "@/lib/validation/productTypes";
+import {
+  createProductType,
+  getProductTypes,
+} from "@/lib/product-types.service";
 
 export async function GET() {
   try {
-    const userId = await getCurrentUserId();
-    const types = await typesDatabase.getAllTypesOfProducts(userId);
+    const types = await getProductTypes();
 
     return NextResponse.json({ data: types });
   } catch (error) {
@@ -21,27 +21,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.json().catch(() => null);
-    const validation = validateProductTypeInput(rawBody);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400 },
-      );
-    }
-
-    const newProductType = validation.data;
-    const userId = await getCurrentUserId();
-    const existingType = await typesDatabase.findType(newProductType, userId);
-
-    if (existingType) {
-      return NextResponse.json({ data: existingType });
-    }
-
-    const newType = await typesDatabase.createTypeOfProduct({
-      newProductType,
-      userId,
-    });
+    const newType = await createProductType(rawBody);
 
     return NextResponse.json({ data: newType });
   } catch (error) {
