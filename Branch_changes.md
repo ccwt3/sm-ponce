@@ -326,3 +326,16 @@ Resumen corto:
   internos de Supabase al cliente.
 
 [Estado: Canario Activo]
+
+## Reporte Fase [6]
+
+Resumen corto:
+
+- Se cambio el seed a modo no destructivo por defecto y el borrado ahora exige
+  `SEED_DELETE_PREVIOUS_DATA=true` y `CONFIRM_SEED_DELETE=true`.
+- El seed destructivo queda bloqueado cuando `NODE_ENV=production` y muestra el
+  `SEED_USER_ID` objetivo antes de operar.
+- Se documento en README el uso administrativo local/CI de service role y las
+  variables del seed seguro.
+
+[Estado: Canario Activo]

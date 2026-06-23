@@ -287,6 +287,8 @@ NEXT_PUBLIC_API_URL=/api
 # Solo para seed administrativo local.
 SUPABASE_SERVICE_ROLE_KEY=TU_SERVICE_ROLE_KEY
 SEED_USER_ID=UUID_DEL_USUARIO_A_SEEDEAR
+SEED_DELETE_PREVIOUS_DATA=false
+CONFIRM_SEED_DELETE=false
 ```
 
 Las variables de Supabase son obligatorias para validar sesiones. Los archivos
@@ -330,11 +332,22 @@ pnpm build
 
 `pnpm seed:products` ejecuta `scripts/seed-products.ts`. El script usa
 `SUPABASE_SERVICE_ROLE_KEY`, por lo que evita RLS intencionalmente y debe
-tratarse como herramienta administrativa local, no como flujo de runtime.
+tratarse como herramienta administrativa local o de CI controlado, no como
+flujo de runtime ni como credencial disponible para el cliente.
 
-El seed actual crea 15 tipos de producto y 300 productos para `SEED_USER_ID`.
-Por defecto `DELETE_PREVIOUS_DATA` esta en `true`, asi que borra primero los
-productos y tipos previos de ese usuario.
+El seed crea 15 tipos de producto base y 300 productos para `SEED_USER_ID`.
+Por defecto es no destructivo: no borra datos, reutiliza tipos existentes y
+agrega productos nuevos con un sufijo unico por ejecucion.
+
+Para borrar primero los productos y tipos previos del usuario objetivo, se
+deben definir ambas variables:
+
+```env
+SEED_DELETE_PREVIOUS_DATA=true
+CONFIRM_SEED_DELETE=true
+```
+
+El modo destructivo se bloquea cuando `NODE_ENV=production`.
 
 ## Modelo de datos esperado
 
