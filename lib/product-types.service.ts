@@ -1,17 +1,18 @@
 import "server-only";
 
 import productTypesDatabase from "@/database/productTypes";
+import { HttpError } from "@/lib/api-errors";
 import { getCurrentUserId } from "@/lib/server-utils";
 import { validateSupabaseTableId } from "@/lib/validation/ids";
 import { validateProductTypeInput } from "@/lib/validation/productTypes";
 import type { ProductType } from "@/types";
 
-export class ProductTypesServiceError extends Error {
+export class ProductTypesServiceError extends HttpError {
   constructor(
     message: string,
-    public readonly status: number,
+    status: number,
   ) {
-    super(message);
+    super(message, status);
   }
 }
 
@@ -49,7 +50,7 @@ export async function deleteProductType(id: string): Promise<number> {
   const idValidation = validateSupabaseTableId(id);
 
   if (!idValidation.success) {
-    throw new ProductTypesServiceError(idValidation.error, 400);
+    throw new ProductTypesServiceError("Id de tipo de producto invalido", 400);
   }
 
   const typeId = Number(idValidation.id);

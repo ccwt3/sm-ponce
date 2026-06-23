@@ -1,5 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
+import { expectedSupabaseError } from "@/lib/api-errors";
 import type { ProductType } from "@/types";
+
+function productTypeDatabaseError(
+  error: unknown,
+  fallbackMessage: string,
+  messages: Parameters<typeof expectedSupabaseError>[1] = {},
+) {
+  return expectedSupabaseError(error, messages) ?? new Error(fallbackMessage);
+}
 
 class ProductTypesDatabase {
   private async getSupabaseClient() {
@@ -23,7 +32,14 @@ class ProductTypesDatabase {
 
     if (error) {
       console.error("Error al obtener tipo de producto:", error);
-      throw new Error("Error al obtener tipo de producto");
+      throw productTypeDatabaseError(
+        error,
+        "Error al obtener tipo de producto",
+        {
+          invalidInput: "Tipo de producto invalido",
+          notFound: "Tipo de producto no encontrado",
+        },
+      );
     }
 
     return type;
@@ -45,7 +61,14 @@ class ProductTypesDatabase {
 
     if (error) {
       console.error("Error al obtener tipo de producto por ID:", error);
-      throw new Error("Error al obtener tipo de producto");
+      throw productTypeDatabaseError(
+        error,
+        "Error al obtener tipo de producto",
+        {
+          invalidInput: "Id de tipo de producto invalido",
+          notFound: "Tipo de producto no encontrado",
+        },
+      );
     }
 
     return type;
@@ -61,7 +84,13 @@ class ProductTypesDatabase {
 
     if (error) {
       console.error("Error al obtener tipos de producto:", error);
-      throw new Error("Error al obtener tipos de producto");
+      throw productTypeDatabaseError(
+        error,
+        "Error al obtener tipos de producto",
+        {
+          invalidInput: "Parametros de tipos invalidos",
+        },
+      );
     }
 
     return types ?? [];
@@ -84,7 +113,16 @@ class ProductTypesDatabase {
 
     if (error) {
       console.error("Error al crear tipo de producto:", error);
-      throw new Error("Error al crear tipo de producto");
+      throw productTypeDatabaseError(
+        error,
+        "Error al crear tipo de producto",
+        {
+          duplicate: "Ya existe un tipo de producto con ese nombre",
+          foreignKey:
+            "No se puede crear el tipo de producto con los datos actuales",
+          invalidInput: "Tipo de producto invalido",
+        },
+      );
     }
 
     return newType;
@@ -103,7 +141,16 @@ class ProductTypesDatabase {
 
     if (error) {
       console.error("Error al eliminar tipo de producto:", error);
-      throw new Error("Error al eliminar tipo de producto");
+      throw productTypeDatabaseError(
+        error,
+        "Error al eliminar tipo de producto",
+        {
+          foreignKey:
+            "No se puede eliminar el tipo porque esta relacionado con productos",
+          invalidInput: "Id de tipo de producto invalido",
+          notFound: "Tipo de producto no encontrado",
+        },
+      );
     }
 
     return Boolean(type);

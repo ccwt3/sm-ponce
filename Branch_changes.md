@@ -313,3 +313,16 @@ Resumen corto:
   negocio de tipos.
 
 [Estado: Canario Activo]
+
+## Reporte Fase [5]
+
+Resumen corto:
+
+- Se agrego un error HTTP comun y un mapeo central para codigos esperados de
+  Supabase/Postgres.
+- Los repositorios de productos y tipos convierten duplicados, foreign keys,
+  ids invalidos y no encontrados en respuestas controladas.
+- Los servicios mantienen `400` y `404` de dominio sin exponer mensajes
+  internos de Supabase al cliente.
+
+[Estado: Canario Activo]

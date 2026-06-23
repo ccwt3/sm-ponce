@@ -2,11 +2,13 @@ import "server-only";
 
 import itemsDatabase from "@/database/items";
 import typesDatabase from "@/database/productTypes";
+import { HttpError } from "@/lib/api-errors";
 import {
   DEFAULT_PRODUCT_PAGE,
   PRODUCT_PAGE_SIZE,
 } from "@/lib/products.pagination";
 import { getCurrentUserId } from "@/lib/server-utils";
+import { validateSupabaseTableId } from "@/lib/validation/ids";
 import {
   validateCreateProductInput,
   validateUpdateProductInput,
@@ -19,12 +21,12 @@ import type {
   RawProduct,
 } from "@/types";
 
-export class ProductServiceError extends Error {
+export class ProductServiceError extends HttpError {
   constructor(
     message: string,
-    public readonly status: number,
+    status: number,
   ) {
-    super(message);
+    super(message, status);
   }
 }
 
@@ -66,6 +68,16 @@ async function resolveProductType(
   return productType;
 }
 
+function parseProductId(id: string): number {
+  const idValidation = validateSupabaseTableId(id);
+
+  if (!idValidation.success) {
+    throw new ProductServiceError("Id de producto invalido", 400);
+  }
+
+  return Number(idValidation.id);
+}
+
 export async function getProductsForDashboard(
   {
     page = DEFAULT_PRODUCT_PAGE,
@@ -89,7 +101,7 @@ export async function getProductsForDashboard(
 
 export async function getProductById(id: string): Promise<Product> {
   const userId = await getCurrentUserId();
-  const productId = Number(id);
+  const productId = parseProductId(id);
   const product = await itemsDatabase.getProductById(productId, userId);
 
   if (!product) {
@@ -131,7 +143,7 @@ export async function updateProduct(
 
   const body = validation.data;
   const userId = await getCurrentUserId();
-  const productId = Number(id);
+  const productId = parseProductId(id);
   const { tipo_id: typeName, ...productFields } = body;
   const productType = typeName
     ? await resolveProductType(typeName, userId)
@@ -161,7 +173,7 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<string> {
   const userId = await getCurrentUserId();
-  const productId = Number(id);
+  const productId = parseProductId(id);
   const deletedId = await itemsDatabase.deleteProduct(productId, userId);
 
   if (!deletedId) {

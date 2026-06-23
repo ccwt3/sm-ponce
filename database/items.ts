@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { expectedSupabaseError } from "@/lib/api-errors";
 import {
   DEFAULT_PRODUCT_PAGE,
   PRODUCT_PAGE_SIZE,
@@ -62,6 +63,14 @@ function productFromSelect(row: ProductSelectRow): RawProduct {
   };
 }
 
+function productDatabaseError(
+  error: unknown,
+  fallbackMessage: string,
+  messages: Parameters<typeof expectedSupabaseError>[1] = {},
+) {
+  return expectedSupabaseError(error, messages) ?? new Error(fallbackMessage);
+}
+
 function quotedPostgrestValue(value: string): string {
   return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
@@ -110,7 +119,9 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al obtener productos:", error);
-      throw new Error("Error al obtener productos");
+      throw productDatabaseError(error, "Error al obtener productos", {
+        invalidInput: "Parametros de busqueda invalidos",
+      });
     }
 
     const pageProducts = (products ?? []).map(productFromSelect);
@@ -134,7 +145,9 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al buscar tipos de producto:", error);
-      throw new Error("Error al buscar productos");
+      throw productDatabaseError(error, "Error al buscar productos", {
+        invalidInput: "Parametros de busqueda invalidos",
+      });
     }
 
     return types?.map((type) => type.id) ?? [];
@@ -155,7 +168,10 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al obtener producto por ID:", error);
-      throw new Error("Error al obtener producto por ID");
+      throw productDatabaseError(error, "Error al obtener producto por ID", {
+        invalidInput: "Id de producto invalido",
+        notFound: "Producto no encontrado",
+      });
     }
 
     return product ? productFromSelect(product) : null;
@@ -172,7 +188,11 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al crear producto:", error);
-      throw new Error("Error al crear producto");
+      throw productDatabaseError(error, "Error al crear producto", {
+        duplicate: "Ya existe un producto con ese nombre",
+        foreignKey: "El tipo de producto seleccionado no es valido",
+        invalidInput: "Datos de producto invalidos",
+      });
     }
 
     return product;
@@ -195,7 +215,12 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al actualizar producto:", error);
-      throw new Error("Error al actualizar producto");
+      throw productDatabaseError(error, "Error al actualizar producto", {
+        duplicate: "Ya existe un producto con ese nombre",
+        foreignKey: "El tipo de producto seleccionado no es valido",
+        invalidInput: "Datos de producto invalidos",
+        notFound: "Producto no encontrado",
+      });
     }
 
     return product;
@@ -213,7 +238,12 @@ class ItemsDatabase {
 
     if (error) {
       console.error("Error al eliminar producto:", error);
-      throw new Error("Error al eliminar producto");
+      throw productDatabaseError(error, "Error al eliminar producto", {
+        foreignKey:
+          "No se puede eliminar el producto porque tiene datos relacionados",
+        invalidInput: "Id de producto invalido",
+        notFound: "Producto no encontrado",
+      });
     }
 
     return product?.id ?? null;
