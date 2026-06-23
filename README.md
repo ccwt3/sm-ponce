@@ -349,6 +349,33 @@ CONFIRM_SEED_DELETE=true
 
 El modo destructivo se bloquea cuando `NODE_ENV=production`.
 
+### Checklist Supabase Auth para produccion
+
+Esta configuracion se aplica en la consola de Supabase del proyecto
+productivo. No guardes llaves, tokens de Management API ni secretos en archivos
+versionados.
+
+Usa valores exactos para produccion:
+
+| Ajuste | Valor productivo requerido |
+| --- | --- |
+| Confirmacion de email | Activada. |
+| Site URL | `https://<dominio-productivo>` |
+| Redirect URLs permitidas | `https://<dominio-productivo>/` y `https://<dominio-productivo>/auth/update-password` |
+| Redirect URLs locales | Solo en proyecto local/staging separado: `http://localhost:3000/` y `http://localhost:3000/auth/update-password` |
+| Wildcards de redirect | No usar comodines amplios ni dominios no controlados en produccion. |
+| Politica minima de contrasena | Minimo 12 caracteres, con minusculas, mayusculas, numeros y simbolos. Activar bloqueo de contrasenas filtradas si el plan lo permite. |
+| Rate limits de Auth | Revisados en Authentication > Rate Limits. Mantener limites por defecto como base y endurecer envios de email/OTP si hay abuso. |
+| MFA | Evaluado. No marcarlo como obligatorio hasta implementar UI de enrollment/challenge; preferir TOTP cuando se agregue. |
+| Plantillas de correo | Revisar confirmacion y recuperacion para usar solo URLs del dominio productivo y no exponer errores internos. |
+
+Flujos a validar manualmente despues de aplicar la configuracion:
+
+- Registro y confirmacion de correo terminan en `/`.
+- Login redirige al inventario.
+- Recuperacion de contrasena abre `/auth/update-password`.
+- Actualizacion de contrasena permite volver a iniciar sesion.
+
 ## Modelo de datos esperado
 
 El codigo espera dos tablas de Supabase.

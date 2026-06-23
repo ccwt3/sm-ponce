@@ -339,3 +339,42 @@ Resumen corto:
   variables del seed seguro.
 
 [Estado: Canario Activo]
+
+## Checklist operativo Supabase Auth para produccion
+
+Registro de Fase 7:
+
+- No hay dominio productivo versionado en el repositorio, por lo que el valor
+  final debe aplicarse en Supabase como `https://<dominio-productivo>`.
+- Confirmacion de email: activar en Supabase Auth.
+- Site URL productiva: `https://<dominio-productivo>`.
+- Redirect URLs productivas permitidas: `https://<dominio-productivo>/` y
+  `https://<dominio-productivo>/auth/update-password`.
+- Redirect URLs locales: mantener separadas en proyecto local/staging, como
+  `http://localhost:3000/` y
+  `http://localhost:3000/auth/update-password`.
+- No usar comodines amplios ni dominios no controlados en redirect URLs
+  productivas.
+- Politica minima de contrasena: minimo 12 caracteres, minusculas, mayusculas,
+  numeros y simbolos; activar proteccion contra contrasenas filtradas si el
+  plan lo permite.
+- Rate limits de Auth: revisar en Authentication > Rate Limits y mantenerlos
+  al menos en valores por defecto; endurecer email/OTP si aparece abuso.
+- MFA: evaluado como no obligatorio por ahora porque la app no incluye UI de
+  enrollment/challenge; preferir TOTP cuando se implemente.
+- Plantillas de correo: revisar confirmacion y recuperacion para usar solo el
+  dominio productivo y no exponer mensajes internos.
+- Verificacion manual requerida despues de aplicar la configuracion: registro,
+  confirmacion, login, recuperacion y actualizacion de contrasena funcionando
+  con el dominio productivo.
+
+## Reporte Fase [7]
+
+Resumen corto:
+
+- Se documento la checklist operativa de Supabase Auth para produccion.
+- Se definieron los valores seguros esperados para Site URL, redirects,
+  contrasenas, rate limits, MFA y plantillas.
+- Se agrego en README la guia de validacion manual de los flujos de Auth.
+
+[Estado: Canario Activo]
