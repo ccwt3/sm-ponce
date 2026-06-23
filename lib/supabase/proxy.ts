@@ -25,18 +25,24 @@ function isGuestOnlyPath(pathname: string) {
   return guestOnlyPaths.includes(pathname);
 }
 
-function getSafeRedirectPath(path: string | null) {
+export function getSafeRedirectPath(path: string | null) {
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
     return "/";
   }
 
-  const url = new URL(path, "http://localhost");
+  let url: URL;
+
+  try {
+    url = new URL(path, "http://localhost");
+  } catch {
+    return "/";
+  }
 
   if (isGuestOnlyPath(url.pathname)) {
     return "/";
   }
 
-  return `${url.pathname}${url.search}`;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function copyResponseCookies(from: NextResponse, to: NextResponse) {

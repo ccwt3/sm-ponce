@@ -263,3 +263,14 @@ Para cambios en Supabase o Auth:
 - confirmar manualmente el flujo afectado en Supabase;
 - registrar en este documento que cambio se aplico fuera del repositorio;
 - evitar guardar llaves o secretos en archivos versionados.
+
+## Reporte Fase [1]
+
+Resumen corto:
+
+- Se reutilizo el sanitizador de rutas `next` del proxy como funcion comun.
+- La confirmacion de Auth ahora valida `next` antes de redirigir.
+- El fallback seguro queda en `/` para rutas externas, protocol-relative,
+  rutas guest-only o valores malformados.
+
+[Estado: Canario Activo]
