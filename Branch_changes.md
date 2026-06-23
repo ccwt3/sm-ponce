@@ -274,3 +274,16 @@ Resumen corto:
   rutas guest-only o valores malformados.
 
 [Estado: Canario Activo]
+
+## Reporte Fase [2]
+
+Resumen corto:
+
+- Se agrego un helper central para validar ids de tablas Supabase como enteros
+  positivos seguros.
+- `GET`, `PUT` y `DELETE` de productos ahora rechazan ids invalidos con `400`
+  antes de llamar al servicio.
+- `DELETE` de tipos de producto ahora rechaza ids invalidos con `400` antes de
+  llamar al repositorio.
+
+[Estado: Canario Activo]
