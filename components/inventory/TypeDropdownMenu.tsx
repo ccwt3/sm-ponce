@@ -41,7 +41,7 @@ export function TypeCombobox({ value = "", onValueChange }: TypeComboboxProps) {
   const normalizedSearch = search.trim().toLowerCase();
 
   const selectedType = productTypes.find(
-    (type) => type.id === value || type.tipo_de_producto === value,
+    (type) => String(type.id) === value || type.tipo_de_producto === value,
   );
 
   const selectedLabel =

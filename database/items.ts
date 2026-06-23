@@ -3,7 +3,12 @@ import {
   DEFAULT_PRODUCT_PAGE,
   PRODUCT_PAGE_SIZE,
 } from "@/lib/products.pagination";
-import type { ProductRow, ProductWriteInput, RawProduct } from "@/types";
+import type {
+  ProductRow,
+  ProductUpdateWriteInput,
+  ProductWriteInput,
+  RawProduct,
+} from "@/types";
 
 const productRowSelect = `
   id,
@@ -13,7 +18,8 @@ const productRowSelect = `
   tipo_id,
   existencia,
   precio_proveedor,
-  precio_publico
+  precio_publico,
+  user_id
 `;
 
 const productSelect = `
@@ -51,6 +57,7 @@ function productFromSelect(row: ProductSelectRow): RawProduct {
     existencia: row.existencia,
     precio_proveedor: row.precio_proveedor,
     precio_publico: row.precio_publico,
+    user_id: row.user_id,
     tipo: Array.isArray(row.tipo) ? row.tipo[0] ?? null : row.tipo,
   };
 }
@@ -117,7 +124,7 @@ class ItemsDatabase {
   private async getMatchingTypeIds(
     search: string,
     userId: string,
-  ): Promise<string[]> {
+  ): Promise<number[]> {
     const supabase = await this.getSupabaseClient();
     const { data: types, error } = await supabase
       .from("tipo")
@@ -134,7 +141,7 @@ class ItemsDatabase {
   }
 
   async getProductById(
-    id: string,
+    id: number,
     userId: string,
   ): Promise<RawProduct | null> {
     const supabase = await this.getSupabaseClient();
@@ -172,7 +179,7 @@ class ItemsDatabase {
   }
 
   async updateProduct(
-    body: Partial<ProductWriteInput> & { id: string },
+    body: ProductUpdateWriteInput,
     userId: string,
   ): Promise<ProductRow | null> {
     const supabase = await this.getSupabaseClient();
@@ -194,7 +201,7 @@ class ItemsDatabase {
     return product;
   }
 
-  async deleteProduct(id: string, userId: string): Promise<string | null> {
+  async deleteProduct(id: number, userId: string): Promise<number | null> {
     const supabase = await this.getSupabaseClient();
     const { data: product, error } = await supabase
       .from("producto")

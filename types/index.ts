@@ -1,15 +1,13 @@
 export interface ProductRow {
-  id: string;
+  id: number;
   nombre: string;
   modelo: string | null;
   medida: string | null;
-  tipo_id: string;
+  tipo_id: number | null;
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;
-  creadoEn?: string;
-  actualizadoEn?: string;
-  user_id?: string;
+  user_id: string;
 }
 
 export interface RawProduct extends ProductRow {
@@ -25,8 +23,6 @@ export interface Product {
   existencia: number;
   precio_proveedor: number;
   precio_publico: number;
-  creadoEn?: string;
-  actualizadoEn?: string;
 }
 
 export interface ProductPage {
@@ -36,15 +32,21 @@ export interface ProductPage {
   hasNextPage: boolean;
 }
 
-export type ProductWriteInput = Omit<
-  ProductRow,
-  "id" | "creadoEn" | "actualizadoEn"
->;
+export type ProductWriteInput = Omit<ProductRow, "id">;
 
-export type CreateProductInput = Omit<
-  Product,
-  "id" | "creadoEn" | "actualizadoEn"
->;
+export type ProductUpdateWriteInput = Partial<
+  Omit<ProductWriteInput, "user_id">
+> & { id: number };
+
+export interface CreateProductInput {
+  nombre: string;
+  modelo: string | null;
+  medida: string | null;
+  tipo_id: string;
+  existencia: number;
+  precio_proveedor: number;
+  precio_publico: number;
+}
 
 export type UpdateProductInput = Partial<CreateProductInput> & { id: string };
 
@@ -64,6 +66,6 @@ export interface ModalState {
 }
 
 export interface ProductType {
-  id: string;
+  id: number;
   tipo_de_producto: string;
 }

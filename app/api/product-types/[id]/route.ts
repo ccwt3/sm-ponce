@@ -19,7 +19,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = idValidation;
+    const id = Number(idValidation.id);
     const userId = await getCurrentUserId();
 
     const deleted = await productTypesDatabase.deleteTypeOfProduct(id, userId);

@@ -38,7 +38,7 @@ function productFromRow(
   productType?: Pick<ProductType, "tipo_de_producto"> | null,
 ): Product {
   return {
-    id: row.id,
+    id: String(row.id),
     nombre: row.nombre,
     modelo: row.modelo,
     medida: row.medida,
@@ -89,7 +89,8 @@ export async function getProductsForDashboard(
 
 export async function getProductById(id: string): Promise<Product> {
   const userId = await getCurrentUserId();
-  const product = await itemsDatabase.getProductById(id, userId);
+  const productId = Number(id);
+  const product = await itemsDatabase.getProductById(productId, userId);
 
   if (!product) {
     throw new ProductServiceError("Producto no encontrado", 404);
@@ -130,15 +131,17 @@ export async function updateProduct(
 
   const body = validation.data;
   const userId = await getCurrentUserId();
-  const productType = body.tipo_id
-    ? await resolveProductType(body.tipo_id, userId)
+  const productId = Number(id);
+  const { tipo_id: typeName, ...productFields } = body;
+  const productType = typeName
+    ? await resolveProductType(typeName, userId)
     : null;
 
   const updatedProduct = await itemsDatabase.updateProduct(
     {
-      ...body,
-      id,
-      ...(productType ? { tipo_id: productType.id } : {}),
+      ...productFields,
+      id: productId,
+      ...(typeName !== undefined ? { tipo_id: productType?.id ?? null } : {}),
     },
     userId,
   );
@@ -149,7 +152,7 @@ export async function updateProduct(
 
   const responseType = productType ?? (
     updatedProduct.tipo_id
-      ? await typesDatabase.findType(updatedProduct.tipo_id, userId)
+      ? await typesDatabase.findTypeById(updatedProduct.tipo_id, userId)
       : null
   );
 
@@ -158,11 +161,12 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<string> {
   const userId = await getCurrentUserId();
-  const deletedId = await itemsDatabase.deleteProduct(id, userId);
+  const productId = Number(id);
+  const deletedId = await itemsDatabase.deleteProduct(productId, userId);
 
   if (!deletedId) {
     throw new ProductServiceError("Producto no encontrado", 404);
   }
 
-  return deletedId;
+  return String(deletedId);
 }

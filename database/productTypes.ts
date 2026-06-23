@@ -35,6 +35,28 @@ class ProductTypesDatabase {
     return type;
   }
 
+  async findTypeById(
+    id: number,
+    userId: string,
+  ): Promise<ProductType | null> {
+    const supabase = await this.getSupabaseClient();
+
+    const { data: type, error } = await supabase
+      .from("tipo")
+      .select("id, tipo_de_producto")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error al obtener tipo de producto por ID:", error);
+      throw new Error("Error al obtener tipo de producto");
+    }
+
+    return type;
+  }
+
   async getAllTypesOfProducts(userId: string): Promise<ProductType[]> {
     const supabase = await this.getSupabaseClient();
 
@@ -74,7 +96,7 @@ class ProductTypesDatabase {
     return newType;
   }
 
-  async deleteTypeOfProduct(id: string, userId: string): Promise<boolean> {
+  async deleteTypeOfProduct(id: number, userId: string): Promise<boolean> {
     const supabase = await this.getSupabaseClient();
 
     const { data: type, error } = await supabase

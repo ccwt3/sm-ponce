@@ -287,3 +287,16 @@ Resumen corto:
   llamar al repositorio.
 
 [Estado: Canario Activo]
+
+## Reporte Fase [3]
+
+Resumen corto:
+
+- Se alinearon los tipos de fila de producto con Supabase usando ids numericos,
+  `tipo_id` numerico/null y `user_id` obligatorio para escrituras.
+- Se separaron los payloads cliente de productos para conservar `tipo_id`
+  visible como nombre y evitar heredar `user_id`.
+- El servicio de productos centraliza la conversion DB/UI y resuelve tipos por
+  id cuando normaliza respuestas despues de actualizar.
+
+[Estado: Canario Activo]

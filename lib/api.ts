@@ -89,6 +89,6 @@ export async function createProductType(newProductType: string): Promise<Product
   return response.data;
 }
 
-export async function deleteProductType(id: string): Promise<void> {
+export async function deleteProductType(id: number): Promise<void> {
   await apiFetch(`/product-types/${id}`, { method: "DELETE" });
 }
