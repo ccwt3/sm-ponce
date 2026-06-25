@@ -135,28 +135,28 @@ un endpoint de la misma aplicacion.
 
 #### Tipos de producto
 
-Los tipos siguen parcialmente la arquitectura objetivo:
+Los tipos ya siguen la misma frontera server-side que productos:
 
 ```txt
 components/inventory/TypeDropdownMenu.tsx
   -> hooks/useProductTypes.ts (listar y crear)
   -> lib/api.ts
-  -> app/api/product-types/*
-  -> database/productTypes.ts
-  -> lib/supabase/server.ts
-  -> Supabase PostgreSQL + RLS
+    -> app/api/product-types/*
+      -> lib/product-types.service.ts
+        -> database/productTypes.ts
+          -> lib/supabase/server.ts
+            -> Supabase PostgreSQL + RLS
 ```
 
-Actualmente los Route Handlers de tipos llaman directamente a
-`database/productTypes.ts`; no existe un servicio de tipos equivalente a
-`lib/products.service.ts`. Ademas, la eliminacion se inicia directamente desde
-`TypeDropdownMenu.tsx` hacia `lib/api.ts`, fuera de `useProductTypes`.
+Los Route Handlers delegan en `lib/product-types.service.ts`; el servicio
+concentra autenticacion, validacion, `trim`, reutilizacion de tipos existentes,
+creacion, eliminacion y errores 404/409 controlados. `database/productTypes.ts`
+queda como acceso a datos.
 
-Estas diferencias no rompen el funcionamiento. `POST /api/product-types` ya
-valida el texto con Zod, hace `trim` y reutiliza un tipo existente cuando hay
-coincidencia exacta. Aun asi, reglas y manejo de estado siguen repartidos entre
-componente, hook y Route Handler. Conviene crear un servicio de tipos y mover
-la eliminacion al hook existente.
+La diferencia pendiente esta en el estado cliente: la eliminacion todavia se
+inicia desde `TypeDropdownMenu.tsx` hacia `lib/api.ts` y luego llama `refetch()`.
+Conviene mover esa operacion a `useProductTypes` para que el hook concentre
+todas las operaciones interactivas de tipos.
 
 ### Flujos de autenticacion e infraestructura
 
@@ -199,7 +199,8 @@ Route Handlers ni scripts.
 | `components/ui/` | Primitivas reutilizables de interfaz. |
 | `hooks/` | Estado y operaciones interactivas del cliente. |
 | `lib/` | Cliente HTTP, servicios de dominio, validacion, seguridad, paginacion, busqueda, cache cliente, clientes Supabase y utilidades. |
-| `database/` | Capa de acceso a datos para las tablas `producto` y `tipo`; no contiene el esquema ni las politicas RLS. |
+| `database/` | Capa de acceso a datos para las tablas `producto` y `tipo`. |
+| `supabase/migrations/` | Schema, constraints, indices, foreign keys y policies RLS versionadas. |
 | `types/` | Contratos compartidos de dominio y respuestas. |
 | `proxy.ts` | Punto de entrada del proxy de Next para refrescar y proteger sesiones. |
 
@@ -238,6 +239,14 @@ Las politicas RLS de Supabase son la ultima frontera de autorizacion y deben
 permanecer activas para `producto` y `tipo`. El codigo usa el cliente de usuario
 con cookies de sesion durante el runtime; no utiliza una service role para
 saltarse RLS. El script administrativo de seed es la excepcion aislada.
+
+Las migraciones versionan RLS, grants y constraints. La configuracion actual
+revoca permisos de tabla para `anon`, conserva permisos de lectura/escritura
+solo para usuarios autenticados y refuerza productos con policies `SELECT` y
+`UPDATE` para `authenticated`; `UPDATE` incluye `WITH CHECK` de propietario.
+La relacion entre productos y tipos usa una FK compuesta `(tipo_id, user_id)`,
+lo que evita asociar un producto con un tipo de otro usuario incluso si alguien
+llama Supabase directamente.
 
 ## Rutas
 
@@ -407,6 +416,12 @@ el modelo normalizado que consume actualmente la UI, la propiedad `tipo_id`
 contiene el nombre visible del tipo. Esta dualidad se conserva por
 compatibilidad y es una deuda de dominio conocida.
 
+La base versionada refuerza integridad con constraints para existencias y
+precios no negativos, textos requeridos no vacios, longitudes maximas y
+unicidad normalizada de tipos por usuario. `producto.tipo_id` usa `ON DELETE SET
+NULL`: si se elimina un tipo, los productos relacionados se conservan y quedan
+como `Sin tipo` en la UI.
+
 ## Decisiones actuales
 
 - La primera carga ocurre en un Server Component y entrega datos iniciales al
@@ -423,6 +438,8 @@ compatibilidad y es una deuda de dominio conocida.
   cache LRU durante la sesion de la vista.
 - Los precios se presentan en formato MXN.
 - Stock `0` se considera vacio, de `1` a `3` bajo y desde `4` disponible.
+- Eliminar un tipo de producto no elimina productos: la base deja
+  `producto.tipo_id` en `null` y la UI lo muestra como `Sin tipo`.
 - La configuracion, soporte, privacidad y contacto permanecen como puntos de
   extension temporal.
 
@@ -434,24 +451,22 @@ compatibilidad y es una deuda de dominio conocida.
 - La busqueda server-side usa coincidencias simples y no establece prioridad o
   ranking entre campos.
 
-- No hay indices, migraciones ni politicas versionadas que permitan auditar el
-  rendimiento esperado de la busqueda en Supabase desde el repositorio.
+- Existen migraciones versionadas para schema, constraints, indices y RLS. Aun
+  no hay indices especificos para optimizar busquedas `ilike` en `nombre`,
+  `modelo`, `medida` o nombre de tipo.
 
 - No existe una suite de pruebas automatizadas.
 
-- Los tipos de producto no tienen una capa de servicio y sus Route Handlers
-  acceden directamente a `database/productTypes.ts`.
 - La eliminacion de tipos se ejecuta desde el componente en vez de estar
   encapsulada en `useProductTypes`.
-- El backend de tipos reutiliza coincidencias exactas, pero no hay una
-  restriccion unica versionada ni normalizacion case-insensitive garantizada
-  contra duplicados creados por requests directos o carreras.
+- El backend de tipos reutiliza coincidencias exactas antes de insertar. La
+  base cubre duplicados case-insensitive con un indice unico normalizado; en
+  carreras o llamadas directas el resultado puede ser `409` en vez de
+  reutilizacion silenciosa.
 
 - `tipo_id` tiene significados distintos entre la fila de base de datos y el
   modelo normalizado de UI.
 
-- El repositorio no contiene migraciones ni definiciones de politicas RLS, por
-  lo que esa configuracion no puede auditarse o reproducirse solo desde codigo.
 - `scripts/seed-products.ts` usa una service role y evita RLS de forma
   intencional; debe tratarse como herramienta administrativa, no como flujo de
   la aplicacion.
@@ -464,8 +479,14 @@ compatibilidad y es una deuda de dominio conocida.
 - Persisten componentes heredados sin consumidor directo en las rutas actuales:
   `auth-button`, `logout-button`, `env-var-warning` y `theme-switcher`.
 
-- La eliminacion de un tipo relacionado con productos depende de las
-  restricciones definidas en Supabase.
+- La eliminacion de un tipo relacionado con productos conserva las filas y deja
+  el tipo en `null`; conviene hacer mas explicito este comportamiento en la UI
+  si se mantiene despues de la beta.
+- Hay dos indices unicos normalizados equivalentes para tipos en migraciones
+  historicas; no afecta seguridad, pero conviene consolidarlos.
+- `producto_user_nombre_unique` impide nombres duplicados por usuario aunque
+  cambien modelo, medida o tipo; conviene confirmar si esa es la regla de
+  negocio deseada.
 
 - La estrategia de dependencias Radix mezcla paquetes especificos
   `@radix-ui/*` con el paquete monolitico `radix-ui`.

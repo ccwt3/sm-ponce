@@ -1,7 +1,7 @@
 # Branch Status - Auditoria de arquitectura
 
 Fecha de auditoria inicial: 13 de junio de 2026
-Actualizacion documental: 22 de junio de 2026
+Actualizacion documental: 25 de junio de 2026
 
 ## Resumen ejecutivo
 
@@ -20,10 +20,9 @@ Esa cadena aplica a interacciones de dominio iniciadas en componentes cliente,
 pero no a Server Components, Route Handlers, proxy, autenticacion ni scripts.
 En esos casos saltar hooks o `/api` es correcto.
 
-La discrepancia arquitectonica principal esta en tipos de producto: sus Route
-Handlers acceden directamente a `database/productTypes.ts`, sin una capa de
-servicio, y la eliminacion se ejecuta desde el componente fuera del hook
-`useProductTypes`.
+La discrepancia arquitectonica principal que queda esta en tipos de producto:
+la eliminacion se ejecuta desde el componente fuera del hook `useProductTypes`.
+Los Route Handlers de tipos ya delegan en `lib/product-types.service.ts`.
 
 ## Actualizacion del 22 de junio de 2026
 
@@ -76,45 +75,42 @@ pnpm seed:products
   -> scripts/seed-products.ts
     -> dotenv .env.local
     -> @supabase/supabase-js con SUPABASE_SERVICE_ROLE_KEY
-      -> borra productos/tipos previos del SEED_USER_ID
+      -> por defecto conserva datos previos del SEED_USER_ID
       -> crea 15 tipos y 300 productos
 ```
 
-Evaluacion: apropiado como herramienta administrativa, riesgoso si se ejecuta
-sin revisar `.env.local` porque `DELETE_PREVIOUS_DATA` esta en `true`.
+Evaluacion: apropiado como herramienta administrativa. El modo destructivo
+requiere `SEED_DELETE_PREVIOUS_DATA=true` y `CONFIRM_SEED_DELETE=true`, y queda
+bloqueado con `NODE_ENV=production`.
 
 ### Deuda tecnica actualizada
 
 1. No hay pruebas automatizadas para servicios, route handlers, hooks,
    paginacion, busqueda ni flujos de autorizacion.
-2. No hay migraciones, esquema generado, indices ni politicas RLS versionadas;
-   no se puede auditar rendimiento de busqueda ni reglas de unicidad desde el
-   repositorio.
-3. `tipo_id` sigue teniendo doble significado: UUID real en base de datos y
-   nombre visible en el modelo normalizado de UI.
-4. Falta `lib/product-types.service.ts`; validacion, deduplicacion y
-   autorizacion de tipos viven en Route Handlers.
-5. La eliminacion de tipos sigue saliendo desde `TypeDropdownMenu.tsx` hacia
+2. Existen migraciones versionadas con schema, RLS, constraints, indices y
+   foreign keys; aun no hay indices especificos para busqueda `ilike`.
+3. `tipo_id` sigue teniendo doble significado: id numerico real en base de
+   datos y nombre visible en el modelo normalizado de UI.
+4. La eliminacion de tipos sigue saliendo desde `TypeDropdownMenu.tsx` hacia
    `lib/api.ts`, fuera de `useProductTypes`.
-6. El backend de tipos reutiliza coincidencias exactas, pero no garantiza
-   deduplicacion case-insensitive ni carrera segura sin una restriccion unica
-   en Supabase.
-7. La paginacion no tiene conteo total, salto a ultima pagina ni selector de
+5. El backend de tipos reutiliza coincidencias exactas antes de insertar; la
+   base garantiza unicidad case-insensitive, pero carreras o llamadas directas
+   pueden responder `409` en vez de reutilizar silenciosamente.
+6. La paginacion no tiene conteo total, salto a ultima pagina ni selector de
    tamano de pagina; solo anterior/siguiente y `hasNextPage`.
-8. La busqueda no tiene ranking, prioridad por campo ni documentacion de
-   indices.
-9. `NavbarMenu` conserva una accion temporal de Configuracion con
+7. La busqueda no tiene ranking, prioridad por campo ni indices especificos.
+8. `NavbarMenu` conserva una accion temporal de Configuracion con
    `console.log`.
-10. Los enlaces del footer (`Soporte`, `Privacidad`, `Contacto`) siguen con
+9. Los enlaces del footer (`Soporte`, `Privacidad`, `Contacto`) siguen con
     `href="#"`.
-11. El proxy conserva `/login` como ruta publica/guest-only heredada, aunque
+10. El proxy conserva `/login` como ruta publica/guest-only heredada, aunque
     no existe una pagina `app/login`.
-12. Siguen existiendo componentes heredados sin consumidor directo en las rutas
+11. Siguen existiendo componentes heredados sin consumidor directo en las rutas
     actuales: `components/auth-button.tsx`, `components/logout-button.tsx`,
     `components/env-var-warning.tsx` y `components/theme-switcher.tsx`.
-13. Las dependencias de Radix mezclan paquetes especificos `@radix-ui/*` con el
+12. Las dependencias de Radix mezclan paquetes especificos `@radix-ui/*` con el
     paquete monolitico `radix-ui`.
-14. `eslint-config-next` esta fijado en 15.3.1 mientras el lockfile resuelve
+13. `eslint-config-next` esta fijado en 15.3.1 mientras el lockfile resuelve
     Next.js 16.2.4.
 
 ## Estado tecnico verificado
@@ -125,7 +121,7 @@ sin revisar `.env.local` porque `DELETE_PREVIOUS_DATA` esta en `true`.
 | `npm run build` | Correcto, compila Next.js y TypeScript. |
 | TypeScript estricto | Activado. |
 | Pruebas automatizadas | No existen. |
-| Migraciones y RLS versionadas | No existen en el repositorio. |
+| Migraciones y RLS versionadas | Existen en `supabase/migrations`; incluyen constraints, RLS, grants y FK compuesta producto/tipo. |
 | Estado Git durante auditoria | Rama `hand-made`; sin cambios reportados antes de editar documentacion; `scripts/seed-products.ts` esta trackeado. |
 
 El build verificado usa Next.js 16.2.4 y genera correctamente las paginas,
@@ -245,20 +241,19 @@ TypeDropdownMenu
   -> useProductTypes
     -> lib/api.ts
       -> GET/POST /api/product-types
-        -> validacion y autorizacion dentro del Route Handler
-        -> database/productTypes.ts
-          -> Supabase
+        -> lib/product-types.service.ts
+          -> validacion Zod
+          -> usuario autenticado y asignacion/filtro por user_id
+          -> reutilizacion de tipos existentes
+          -> database/productTypes.ts
+            -> Supabase
 ```
 
-Evaluacion: funcional, pero parcialmente inconsistente.
+Evaluacion: correcto.
 
-Falta una capa `lib/product-types.service.ts`. Como consecuencia, el Route
-Handler contiene reglas de negocio como validacion, deteccion de duplicados y
-asignacion de propietario. Esas reglas no pueden reutilizarse facilmente desde
-otro punto de entrada server-side y quedan acopladas a Next.js.
-
-Recomendacion: crear un servicio de tipos que concentre listar, crear y eliminar
-tipos; dejar los Route Handlers limitados a traducir HTTP.
+Los Route Handlers de tipos quedaron como traductores HTTP. Las reglas de
+dominio viven en `lib/product-types.service.ts` y el acceso a datos queda en
+`database/productTypes.ts`.
 
 ### 5. Eliminar tipos de producto
 
@@ -266,18 +261,18 @@ tipos; dejar los Route Handlers limitados a traducir HTTP.
 TypeDropdownMenu
   -> lib/api.ts:deleteProductType
     -> DELETE /api/product-types/[id]
-      -> database/productTypes.ts
-        -> Supabase
+      -> lib/product-types.service.ts
+        -> validacion de id y usuario autenticado
+        -> database/productTypes.ts
+          -> Supabase
 ```
 
-Evaluacion: funcional, con dos discrepancias.
+Evaluacion: funcional, con una discrepancia.
 
 - La accion no pasa por `useProductTypes`, aunque ese hook ya administra la
   coleccion, errores, creacion y `refetch`.
-- El Route Handler no pasa por un servicio de dominio.
 
-Recomendacion: mover `deleteProductType` y la actualizacion de estado al hook,
-y hacer que el endpoint delegue en el servicio de tipos.
+Recomendacion: mover `deleteProductType` y la actualizacion de estado al hook.
 
 ### 6. Autenticacion cliente
 
@@ -344,8 +339,8 @@ en `.env.local`.
 | --- | --- | --- | --- | --- | --- |
 | Productos, carga server | No aplica | No aplica | Si | Si | Correcto |
 | Productos, CRUD cliente | Si | Si | Si | Si | Correcto |
-| Tipos, listar/crear | Si | Si | No | Si | Mejorable |
-| Tipos, eliminar | No, aunque conviene | Si | No | Si | Mejorable |
+| Tipos, listar/crear | Si | Si | Si | Si | Correcto |
+| Tipos, eliminar | No, aunque conviene | Si | Si | Si | Mejorable |
 | Auth cliente | Opcional | No aplica | No aplica | No aplica | Correcto |
 | Auth server/proxy | No aplica | No aplica | No aplica | No aplica | Correcto |
 | Seed administrativo | No aplica | No aplica | No aplica | Acceso directo intencional | Fuera del runtime |
@@ -390,6 +385,7 @@ reutilizacion. No es una capa universal.
 
 - El navegador no accede directamente a las tablas `producto` o `tipo`.
 - El CRUD de productos tiene una capa de servicio clara.
+- Los tipos de producto ya tienen una capa de servicio clara.
 - Las entradas de productos se validan con Zod en servidor.
 - `user_id` se obtiene de la sesion y se usa en consultas y mutaciones.
 - La carga inicial server-side evita una llamada HTTP interna.
@@ -397,6 +393,8 @@ reutilizacion. No es una capa universal.
 - La busqueda combina consulta server-side, debounce, cancelacion de requests
   obsoletos y fallback local sobre paginas cacheadas.
 - El proxy y los servicios aplican proteccion complementaria.
+- Las migraciones versionan constraints, unicidad, RLS, grants y una FK
+  compuesta que evita asociar productos con tipos de otro usuario.
 - Los clientes Supabase estan separados para navegador, servidor y proxy.
 - Lint, TypeScript y build pasaron en la verificacion previa documentada.
 
@@ -404,19 +402,21 @@ reutilizacion. No es una capa universal.
 
 ### Prioridad media
 
-1. Falta `lib/product-types.service.ts`; reglas de tipos viven en Route
-   Handlers.
-2. La eliminacion de tipos queda fuera de `useProductTypes`.
-3. `tipo_id` significa id en base de datos, pero nombre visible en el modelo
+1. La eliminacion de tipos queda fuera de `useProductTypes`.
+2. `tipo_id` significa id en base de datos, pero nombre visible en el modelo
    que consume la UI. Esto debilita contratos y aumenta el riesgo de errores.
-4. No hay pruebas automatizadas para servicios, Route Handlers, hooks o flujos
+3. No hay pruebas automatizadas para servicios, Route Handlers, hooks o flujos
    de autorizacion.
-5. No hay migraciones, esquema generado ni politicas RLS versionadas. La
-   configuracion real de Supabase no puede verificarse desde el repositorio.
-6. No hay pruebas ni fixtures para la paginacion, busqueda con `q`, cache
+4. No hay pruebas ni fixtures para la paginacion, busqueda con `q`, cache
    cliente o cancelacion de requests obsoletos.
-7. La deduplicacion de tipos depende de comparaciones exactas y de la UI; falta
-   una restriccion unica/versionada para cubrir requests directos o carreras.
+5. La deduplicacion de tipos reutiliza coincidencias exactas en el servicio; la
+   base cubre duplicados case-insensitive, pero en carreras puede responder
+   `409` en vez de reutilizar el tipo existente.
+6. Las policies de tipos siguen definidas `to public` en la migracion base,
+   aunque los grants de `anon` ya fueron revocados. Conviene hacerlas explicitas
+   para `authenticated` y agregar `WITH CHECK` a UPDATE.
+7. Hay dos indices unicos normalizados equivalentes para tipos; conviene
+   consolidar uno.
 
 ### Prioridad baja
 
@@ -437,15 +437,15 @@ reutilizacion. No es una capa universal.
 
 ## Prioridades recomendadas
 
-1. Crear `lib/product-types.service.ts` y hacer que ambos endpoints de tipos lo
-   utilicen.
-2. Encapsular eliminacion de tipos dentro de `useProductTypes`.
-3. Separar `tipo_id` y `tipo_nombre` en los contratos de dominio/UI.
-4. Agregar pruebas unitarias para servicios y validaciones, y pruebas de
+1. Encapsular eliminacion de tipos dentro de `useProductTypes`.
+2. Separar `tipo_id` y `tipo_nombre` en los contratos de dominio/UI.
+3. Agregar pruebas unitarias para servicios y validaciones, y pruebas de
    integracion para Route Handlers autorizados/no autorizados.
-5. Agregar pruebas de paginacion, busqueda remota, fallback local y cache.
-6. Versionar migraciones, indices, unicidad de tipos y politicas RLS de
-   Supabase.
+4. Agregar pruebas de paginacion, busqueda remota, fallback local y cache.
+5. Hacer explicitas las policies de tipos para `authenticated` y agregar
+   `WITH CHECK` a UPDATE.
+6. Consolidar indices normalizados redundantes y confirmar la regla de unicidad
+   de productos por nombre.
 7. Mantener el seed aislado, documentar su ejecucion y proteger la service role.
 8. Limpiar restos heredados de UI/proxy y alinear dependencias.
 
@@ -456,13 +456,18 @@ puede tomarse como referencia para nuevas funcionalidades de dominio. No se
 debe forzar una cadena unica sobre toda la aplicacion: las excepciones de
 Server Components y Supabase Auth son correctas.
 
-La mejora mas valiosa es alinear tipos de producto con la capa de servicio ya
-usada por productos. Despues, la mayor deuda no es de estructura de carpetas,
-sino de contratos de dominio, pruebas y configuracion de Supabase versionada.
+La mayor deuda ya no es de estructura de carpetas. Ahora esta en contratos de
+dominio, pruebas automatizadas, algunos detalles de RLS/indices versionados y
+limpieza de comportamiento/documentacion para la eliminacion de tipos.
 
 ## Auditoria de seguridad e integridad de datos
 
 Fecha de auditoria: 22 de junio de 2026
+
+Nota del 25 de junio de 2026: esta seccion se conserva como registro historico
+de la auditoria inicial. Varias observaciones ya fueron corregidas por cambios
+posteriores en codigo y migraciones. Para el estado vigente, usar la seccion
+`Reauditoria de seguridad e integridad de datos`.
 
 Alcance: revision estatica del codigo actual usando `README.md` como mapa,
 mas el schema y las policies de Supabase compartidas para `producto` y `tipo`.
@@ -686,14 +691,180 @@ CREATE UNIQUE INDEX tipo_user_tipo_normalized_unique
     confirmacion de email activa, politica minima de contrasena, rate limits,
     dominios de redirect permitidos y, si el producto lo requiere, MFA.
 
-### Estado de produccion recomendado
+### Estado de produccion recomendado al 22 de junio
 
-No listo para produccion con informacion real de clientes.
+No listo para produccion con informacion real de clientes en la fecha de esta
+auditoria inicial.
 
 Estado aceptable hoy: beta privada o entorno interno con usuarios de confianza,
 RLS activo y backups.
 
-Condicion minima para pasar a produccion: versionar Supabase, agregar
+Condicion minima definida entonces: versionar Supabase, agregar
 constraints/indices/policies explicitas, cerrar el open redirect de
 `/auth/confirm`, validar ids, alinear tipos con el schema y cubrir con pruebas
-los casos cross-user e inputs invalidos.
+los casos cross-user e inputs invalidos. La mayoria de esos puntos ya fueron
+cerrados o reclasificados en la reauditoria vigente.
+
+## Reauditoria de seguridad e integridad de datos
+
+Fecha de auditoria: 25 de junio de 2026
+
+Alcance: comparacion estatica de `Branch_Status.md`, `Branch_changes.md`,
+`README.md`, la codebase actual y las migraciones nuevas
+`supabase/migrations/20260625142252_remote_schema.sql` y
+`supabase/migrations/20260625153103_remote_schema.sql`. No se valido la
+configuracion viva de Supabase Auth desde consola; por lo tanto, ajustes de
+Auth aplicados solo fuera del repositorio quedan marcados como no verificables
+desde codigo.
+
+### Veredicto corto
+
+La bitacora de `Branch_changes.md` coincide en buena parte con el codigo real.
+Las correcciones de aplicacion mas importantes si estan hechas: redirect seguro
+en confirmacion de Auth, validacion de ids, tipos TypeScript alineados con el
+schema, servicio de dominio para tipos, mapeo de errores esperados y seed
+administrativo no destructivo por defecto.
+
+La migracion nueva cierra el hueco principal de integridad de datos que habia
+quedado en la reauditoria anterior: ya versiona y valida `CHECK` para numeros
+no negativos, textos no vacios y longitudes maximas en `producto` y `tipo`.
+Tambien conserva la unicidad normalizada de tipos por usuario.
+
+La migracion mas reciente tambien endurece la frontera de DB: revoca permisos
+de tabla para `anon`, quita permisos innecesarios de `authenticated`, recrea
+policies de productos para `authenticated` y agrega `WITH CHECK` explicito en
+UPDATE de productos. Ademas cambia la relacion producto/tipo a una FK compuesta
+`(tipo_id, user_id)`, evitando que un producto de un usuario apunte a un tipo de
+otro usuario incluso por llamada directa a Supabase.
+
+La app ya esta en mejor posicion para una beta abierta minima o controlada,
+siempre que RLS y Auth esten activos en Supabase y exista monitoreo operativo.
+No marcaria `producto.tipo_id ON DELETE SET NULL` como bloqueante para beta: es
+una decision funcional razonable si el negocio permite eliminar un tipo sin
+destruir productos. La migracion actual conserva filas y solo limpia
+`tipo_id`, por lo que el `user_id` del producto permanece intacto.
+
+La app todavia no queda lista para produccion con datos importantes de clientes
+solo desde la codebase. Los pendientes principales son pruebas automatizadas,
+hacer explicitas las policies restantes de tipos, confirmacion operativa de
+Supabase Auth y limpieza de algunos detalles de documentacion/schema.
+
+### Estado contra las fases reportadas
+
+| Fase o recomendacion | Estado real al 25 de junio | Evaluacion |
+| --- | --- | --- |
+| Redirect seguro en `/auth/confirm` | `app/auth/confirm/route.ts` usa `getSafeRedirectPath` de `lib/supabase/proxy.ts`. | Hecho. |
+| Validacion de ids dinamicos | Productos validan en Route Handler; tipos validan en `lib/product-types.service.ts` antes de tocar base de datos. | Hecho. |
+| Tipos TypeScript vs schema | `ProductRow.id`, `ProductRow.tipo_id` y `ProductType.id` son numericos; payloads cliente ya no heredan `user_id`. | Hecho, con deuda conocida de `Product.tipo_id` como nombre visible. |
+| Servicio de tipos | Existe `lib/product-types.service.ts`; los endpoints de tipos delegan en el servicio. | Hecho. |
+| Errores esperados de Supabase | `lib/api-errors.ts` mapea `23505`, `23503`, `22P02` y `PGRST116`; repositorios lo usan. | Hecho en codigo, pendiente de pruebas. |
+| Seed seguro | `scripts/seed-products.ts` es no destructivo por defecto, exige `SEED_DELETE_PREVIOUS_DATA=true` y `CONFIRM_SEED_DELETE=true`, y bloquea borrado con `NODE_ENV=production`. | Hecho. |
+| Checklist Supabase Auth | README y `Branch_changes.md` documentan valores esperados. | Documentado, no verificable desde repo. |
+| Migraciones versionadas | Existen migraciones con tablas, RLS, FK, unicidad y constraints de integridad. | Hecho. |
+| Constraints de integridad | `20260625142252_remote_schema.sql` agrega y valida `CHECK` para no negativos, no vacios y longitudes maximas. | Hecho. |
+| Unicidad de tipos por usuario | La migracion tiene indice unico funcional `user_id, lower(trim(tipo_de_producto))`. | Hecho. |
+| Unicidad de productos | La migracion agrega `producto_user_nombre_unique` por usuario y nombre normalizado. | Hecho, conviene confirmar que esa regla de negocio es deseada. |
+| FK producto/tipo por usuario | `20260625153103_remote_schema.sql` usa FK compuesta `(tipo_id, user_id)` hacia `tipo(id, user_id)`. | Hecho. |
+| Borrado de tipos relacionados | La FK usa `ON DELETE SET NULL (tipo_id)`. | Decision aceptada para beta; documentar comportamiento. |
+| Grants de tabla | La migracion mas reciente revoca permisos de `anon` y permisos innecesarios de `authenticated`. | Hecho. |
+| Policies RLS explicitas | Productos SELECT/UPDATE ya son `to authenticated`; UPDATE tiene `WITH CHECK`. Policies de tipos siguen `to public` y UPDATE de tipo no muestra `WITH CHECK` explicito. | Parcial. |
+| Tests automatizados | No hay script de test ni specs en el repo. | Pendiente. |
+
+### Hallazgos verificados en codigo y DB
+
+1. La separacion entre usuarios sigue bien defendida en runtime. Los servicios
+   obtienen usuario con Supabase Auth en servidor y los repositorios filtran por
+   `user_id` en consultas, updates y deletes.
+2. El navegador no consulta directamente `producto` ni `tipo`. Las llamadas
+   directas a Supabase desde cliente aparecen en Auth, que es una excepcion
+   deliberada y apropiada.
+3. La service role solo aparece en `scripts/seed-products.ts`; no se usa en
+   `app`, `components`, `hooks`, `lib` o `database`.
+4. La validacion server-side de productos sigue rechazando strings vacios,
+   numeros no finitos, precios negativos y existencia negativa o decimal.
+5. La migracion nueva agrega defensas de base para los mismos invariantes
+   criticos: `producto_existencia_nonnegative`,
+   `producto_precio_proveedor_nonnegative`,
+   `producto_precio_publico_nonnegative`, `producto_nombre_not_blank`,
+   `producto_nombre_max_length`, `producto_modelo_max_length`,
+   `producto_medida_max_length`, `tipo_nombre_not_blank` y
+   `tipo_nombre_max_length`.
+6. La validacion de tipos hace `trim` y exige texto no vacio. Ahora la base
+   tambien limita `tipo_de_producto` a 80 caracteres, lo que cubre llamadas
+   directas a Supabase que salten la UI.
+7. La busqueda remota usa query builder/PostgREST y escapa comillas dobles y
+   backslashes en el filtro `.or(...)`. Aun asi, faltan pruebas con comas,
+   parentesis, comillas, backslashes y operadores PostgREST.
+8. El helper de ids rechaza valores no numericos, cero, negativos y enteros no
+   seguros. Productos lo aplican en el Route Handler; tipos lo aplican en el
+   servicio antes de llamar al repositorio.
+9. `database/productTypes.ts` sigue buscando duplicados con igualdad exacta
+   antes de insertar. La unicidad case-insensitive de la migracion cubre
+   carreras y llamadas directas, pero en esos casos el comportamiento sera
+   `409` en vez de reutilizacion silenciosa del tipo existente.
+10. La migracion mas reciente reemplaza la FK simple de `producto.tipo_id` por
+    `producto_tipo_id_user_id_fkey`, una FK compuesta que obliga a que el tipo
+    referenciado pertenezca al mismo `user_id` que el producto.
+11. El borrado de tipos relacionados queda como decision funcional aceptada
+    para beta: la FK versionada usa `ON DELETE SET NULL`, por lo que borrar un
+    tipo usado por productos conserva las filas y deja `tipo_id` en `null`. El
+    servicio normaliza esos productos como `Sin tipo`.
+12. La migracion mas reciente revoca permisos de tabla para `anon` en
+    `producto` y `tipo`, y revoca permisos innecesarios de `authenticated`
+    como `references`, `trigger` y `truncate`.
+13. Productos quedaron mas explicitos: SELECT y UPDATE son `to authenticated`,
+    y UPDATE declara `WITH CHECK` de propietario.
+14. Hay dos indices unicos funcionalmente equivalentes para tipos:
+    `tipo_user_tipo_de_producto_unique` y `tipo_user_tipo_normalized_unique`.
+    No debilita seguridad, pero duplica mantenimiento en inserts/updates y
+    conviene limpiar uno.
+15. Las policies de tipos siguen declaradas `to public` desde la migracion base.
+    Como los grants de `anon` ya fueron revocados, no es un acceso anonimo
+    efectivo, pero para claridad operativa conviene recrearlas `to
+    authenticated` y agregar `WITH CHECK` explicito en UPDATE.
+16. No hay proteccion CSRF/origin explicita en endpoints mutantes. El riesgo
+    sigue siendo menor con JSON/fetch same-origin y cookies modernas, pero es
+    una defensa recomendable antes de abrir la app fuera de una beta cerrada.
+
+### Documentacion sincronizada y remanentes historicos
+
+1. `README.md` ya fue actualizado para reflejar migraciones versionadas,
+   servicio de tipos, constraints, RLS/grants y `ON DELETE SET NULL`.
+2. Pasajes historicos de la auditoria del 22 de junio quedan como referencia de
+   estado anterior; para la foto vigente debe usarse esta reauditoria.
+3. La deuda de eliminacion de tipos fuera de `useProductTypes` sigue siendo
+   real: `TypeDropdownMenu.tsx` importa `deleteProductType` desde `lib/api.ts`
+   y despues llama `refetch()`.
+4. La deuda de `tipo_id` con doble significado sigue real en el contrato de UI.
+5. La deuda de pruebas automatizadas sigue real.
+6. La recomendacion vieja de cerrar el open redirect de `/auth/confirm` ya esta
+   resuelta.
+7. La afirmacion de que borrar un tipo usado queda protegido por FK restrictiva
+   ya no aplica; por decision de producto, la FK usa `ON DELETE SET NULL
+   (tipo_id)` y no se considera bloqueante para beta abierta minima.
+8. La deuda antigua sobre constraints de integridad faltantes y grants anonimos
+   amplios ya no aplica a las migraciones nuevas.
+
+### Pendientes minimos antes de produccion
+
+1. Hacer explicitas las policies RLS de tipos para `authenticated` y agregar
+   `WITH CHECK` visible en UPDATE de `tipo`.
+2. Revisar si conviene recrear tambien INSERT/DELETE de productos como `to
+   authenticated` para consistencia documental, aunque los grants de `anon` ya
+   fueron revocados.
+3. Limpiar el indice unico redundante de tipos o decidir un unico nombre
+   canonico para `user_id, lower(btrim(tipo_de_producto))`.
+4. Documentar formalmente que borrar un tipo deja productos como `Sin tipo` por
+   `ON DELETE SET NULL`, y actualizar UI/API si se quiere hacerlo mas explicito
+   para el usuario.
+5. Confirmar si `producto_user_nombre_unique` es la regla deseada. Hoy impide
+   productos con el mismo nombre por usuario aunque cambien modelo, medida o
+   tipo.
+6. Agregar pruebas automatizadas para aislamiento entre usuarios, ids invalidos,
+   inputs negativos, strings largos, duplicados, borrado de tipos relacionados y
+   busqueda con caracteres especiales.
+7. Confirmar fuera del repositorio la checklist de Supabase Auth productiva:
+   email confirmation, redirect URLs, Site URL, politica de contrasena, rate
+   limits, plantillas y MFA segun necesidad.
+8. Mantener `README.md` y `Branch_Status.md` sincronizados cuando cambien las
+   migraciones o reglas de negocio.
