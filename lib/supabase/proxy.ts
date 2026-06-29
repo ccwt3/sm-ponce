@@ -3,13 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
 const publicPathPrefixes = ["/auth"];
-const publicPaths = ["/login"];
+const publicPaths = ["/login", "/landing"];
 const guestOnlyPaths = [
   "/auth/forgot-password",
   "/auth/login",
   "/auth/sign-up",
   "/auth/sign-up-success",
   "/login",
+  "/landing",
 ];
 
 function isPublicPath(pathname: string) {
