@@ -378,3 +378,310 @@ Resumen corto:
 - Se agrego en README la guia de validacion manual de los flujos de Auth.
 
 [Estado: Canario Activo]
+
+---
+
+## Auditoria de documentacion vs codigo
+
+Fecha: 29 de junio de 2026
+
+Rama auditada: `deployment-config`
+
+Alcance: contraste estatico entre README.md, Branch_Status.md y Branch_changes.md
+contra la codebase actual. No se ejecutaron lint ni build durante la auditoria;
+solo lectura de archivos y estructura del proyecto.
+
+### Hallazgo 1 — Landing page nueva sin documentar (CRITICO)
+
+La ruta `/landing` existe en codigo y no aparece en ningun documento.
+
+Archivos nuevos confirmados:
+
+- `app/landing/page.tsx` — pagina de aterrizaje con metadata SEO.
+- `components/landing/urgency-bar.tsx`
+- `components/landing/site-header.tsx`
+- `components/landing/hero-section.tsx`
+- `components/landing/stock-states-section.tsx`
+- `components/landing/features-section.tsx`
+- `components/landing/feature-card.tsx`
+- `components/landing/how-it-works-section.tsx`
+- `components/landing/final-cta-section.tsx`
+- `components/landing/site-footer.tsx`
+- `components/landing/beta-modal.tsx`
+- `components/landing/countdown-blocks.tsx`
+- `components/landing/inventory-showcase.tsx`
+- `components/landing/client-ahh-footer.tsx`
+- `components/landing/stock-badge.tsx`
+- `lib/landing/constants.ts`
+- `lib/landing/countdown.ts`
+- `lib/landing/use-countdown.ts`
+- `lib/landing/showcase-data.ts`
+- `lib/landing/features-data.ts`
+- `lib/landing/onboarding-data.ts`
+
+Comportamiento verificado:
+
+- `BETA_DEADLINE_ISO = "2026-07-02T23:59:59-06:00"` (deadline de beta: 2 de
+  julio de 2026, 3 dias desde la fecha de esta auditoria).
+- `BetaModal` muestra una cuenta regresiva y un CTA que redirige a
+  `/auth/login` para registro.
+- El proxy (`lib/supabase/proxy.ts`) fue actualizado: `/landing` esta en
+  `publicPaths` y en `guestOnlyPaths`.
+- Un usuario autenticado que visite `/landing` sera redirigido por el proxy
+  (si el middleware esta activo; ver Hallazgo 2).
+- La landing no esta en la tabla de rutas del README ni en Branch_Status.md.
+
+Accion requerida: actualizar README.md, Branch_Status.md y la tabla de rutas.
+
+### Hallazgo 2 — `proxy.ts` como proxy de Next.js 16 (CORREGIDO)
+
+Durante la auditoria se identifico `proxy.ts` como un posible problema porque
+en Next.js 13-15 el archivo de middleware debe llamarse `middleware.ts` y
+exportar `middleware`. Al intentar aplicar la correccion se descubrio que
+Next.js 16 cambio la convencion:
+
+- El archivo correcto en Next.js 16 es `proxy.ts` con export `proxy`.
+- Al crear `middleware.ts` con export `middleware`, Next.js 16 emitio el
+  warning: "The middleware file convention is deprecated. Please use proxy
+  instead."
+- Con `proxy.ts` restaurado, el build compila sin advertencias y Next.js lista
+  el proxy activo como `Proxy (Middleware)` en el output.
+- `pnpm build` verificado: sin errores ni warnings.
+
+Conclusion: `proxy.ts` estaba correctamente configurado para Next.js 16.
+El hallazgo original de la auditoria era incorrecto. No se requiere accion.
+
+### Hallazgo 3 — Dependencias sin version fija
+
+`package.json` usa `"latest"` para tres dependencias criticas:
+
+- `"next": "latest"`
+- `"@supabase/ssr": "latest"`
+- `"@supabase/supabase-js": "latest"`
+
+Un deploy nuevo puede instalar una version con breaking changes sin aviso.
+El lockfile congela las versiones en la maquina actual, pero en CI o un
+entorno limpio la instalacion depende de lo que `latest` resuelva en ese
+momento.
+
+Accion recomendada: fijar las versiones a las que estan actualmente
+resueltas en `pnpm-lock.yaml` para que los builds sean reproducibles.
+
+### Hallazgo 4 — Deudas documentadas confirmadas pendientes
+
+Las siguientes deudas listadas en Branch_Status.md siguen sin resolver:
+
+| Deuda | Ubicacion real | Estado |
+| --- | --- | --- |
+| Eliminacion de tipos fuera de `useProductTypes` | `TypeDropdownMenu.tsx` llama `deleteProductType` y luego `refetch()` directamente | Pendiente |
+| `console.log` en Configuracion | `components/layout/NavbarMenu.tsx:43` | Pendiente |
+| Footer links sin destino funcional | `components/layout/Footer.tsx`, tres `href="#"` | Pendiente |
+| Componentes heredados sin consumidor | `auth-button.tsx`, `logout-button.tsx`, `env-var-warning.tsx`, `theme-switcher.tsx` | Pendiente |
+| Ruta `/login` en proxy sin pagina real | `lib/supabase/proxy.ts:6` | Pendiente |
+| No hay pruebas automatizadas | Todo el proyecto | Pendiente |
+| `eslint-config-next` en 15.3.1 vs Next.js 16 real | `package.json` | Pendiente |
+
+### Hallazgo 5 — Estado correcto de fases 1–7
+
+Las implementaciones de las siete fases del plan de produccion fueron
+verificadas contra el codigo actual y coinciden con lo reportado:
+
+- `lib/supabase/proxy.ts` contiene `getSafeRedirectPath`. (Fase 1)
+- `lib/validation/ids.ts` existe y es usado por Route Handlers y servicios. (Fase 2)
+- `types/index.ts` tiene `ProductRow.id: number`, `ProductRow.tipo_id: number | null`
+  y `ProductUpdateWriteInput` sin `user_id`. (Fase 3)
+- `lib/product-types.service.ts` existe; Route Handlers de tipos delegan en el. (Fase 4)
+- `lib/api-errors.ts` mapea `23505`, `23503`, `22P02` y `PGRST116`. (Fase 5)
+- `scripts/seed-products.ts` requiere `SEED_DELETE_PREVIOUS_DATA` y
+  `CONFIRM_SEED_DELETE` antes de borrar datos. (Fase 6)
+- Checklist de Auth para produccion documentada en Branch_changes.md y README. (Fase 7)
+
+### Resumen ejecutivo de la auditoria
+
+| Hallazgo | Severidad | Accion |
+| --- | --- | --- |
+| Landing page `/landing` sin documentar | Alta | Actualizar README y Branch_Status.md |
+| `proxy.ts` inactivo como middleware de Next.js | Alta | Renombrar a `middleware.ts`, renombrar export a `middleware` |
+| Dependencias con `latest` sin version fija | Media | Fijar versiones en package.json |
+| Deudas pendientes de Branch_Status.md | Baja-Media | Ver tabla Hallazgo 4 |
+| Fases 1–7 correctas | — | Sin accion |
+
+Finalizado omar
+
+---
+
+## Auditoría medium-depth — 29 de junio de 2026
+
+Rama: `deployment-config`
+
+Alcance: seguridad, conexiones entre módulos, arquitectura general y casos
+especiales de render, calidad del código, modularidad-legibilidad,
+sincronización de documentación y código basura. Profundidad media sobre el
+núcleo del inventario. No se ejecutaron lint ni build durante la auditoría.
+
+Archivos leídos: proxy.ts, lib/supabase/proxy.ts, lib/supabase/server.ts,
+lib/api.ts, lib/api-errors.ts, lib/products.service.ts,
+lib/product-types.service.ts, lib/products.server.ts, lib/products.search.ts,
+lib/products.pagination.ts, lib/products.client-cache.ts,
+lib/contentNormalizer.ts, lib/server-utils.ts, lib/utils.ts,
+lib/validation/ids.ts, lib/validation/products.ts, lib/validation/productTypes.ts,
+database/items.ts, database/productTypes.ts, app/page.tsx,
+app/api/products/route.ts, app/api/products/[id]/route.ts,
+app/api/product-types/route.ts, app/api/product-types/[id]/route.ts,
+app/auth/confirm/route.ts, hooks/useInventory.ts, hooks/useProductTypes.ts,
+components/inventory/InventoryDashboardClient.tsx,
+components/inventory/TypeDropdownMenu.tsx, components/layout/NavbarMenu.tsx,
+components/layout/Footer.tsx, components/ui/StockBadge.tsx,
+components/landing/stock-badge.tsx, types/index.ts, package.json.
+
+### 1. Seguridad
+
+Sin hallazgos nuevos críticos. Las capas de protección están en orden:
+
+- `proxy.ts` y `lib/supabase/proxy.ts` interceptan toda solicitud y refrescan
+  tokens vía `getClaims()`. Este método extrae claims del JWT sin round-trip a
+  Supabase, correcto y eficiente para el proxy. Contrasta deliberadamente con
+  `getUser()` en `requireCurrentUser()`, que sí hace la llamada real y valida
+  la sesión en cada operación de dominio.
+- Todos los servicios y repositorios filtran por `user_id` obtenido del servidor.
+- `validateSupabaseTableId` rechaza ids no enteros positivos antes de llegar a
+  Supabase.
+- Validación Zod en todos los endpoints mutantes de productos y tipos.
+- `getSafeRedirectPath` aplicada tanto en el proxy como en `/auth/confirm`.
+
+Observación: `app/api/product-types/route.ts` y `[id]/route.ts` tienen
+`console.error` propios además de los que ya tiene `database/productTypes.ts`.
+Cada error del repositorio de tipos se loggea dos veces en el servidor. No es
+un riesgo de seguridad; sí es ruido en logs de producción.
+
+### 2. Arquitectura y conexiones entre módulos
+
+Los flujos documentados en Branch_Status.md coinciden con el código real.
+No se encontraron violaciones de capas en el núcleo del inventario.
+
+**Caso especial de render inicial documentado y correcto:**
+
+`app/page.tsx` usa un Server Component interno (`InventoryDashboardServer`)
+envuelto en `<Suspense>`. El Server Component llama `getProductsForDashboard()`
+directamente sin HTTP. Si falla con `AuthRequiredError`, redirige a
+`/auth/login`. Si falla por otro motivo, pasa `initialError` al cliente.
+`useInventory` detecta si hay `initialPage` para evitar un fetch redundante al
+montar. Este diseño es correcto y robusto.
+
+**`lib/products.server.ts` es un re-export trivial:**
+
+```ts
+export { getProductsForDashboard } from "@/lib/products.service";
+```
+
+Una sola línea sin lógica propia. No importa `server-only`; los guards ya
+están en `lib/products.service.ts` y `lib/api-errors.ts`. Existe como punto
+de importación estable para Server Components, lo cual tiene valor
+arquitectónico, pero la documentación lo trata como si fuera un módulo con
+más peso del que tiene.
+
+**`TypeDropdownMenu.tsx` exporta `TypeCombobox`:**
+
+El nombre del archivo y el nombre del export son distintos. La deuda
+documentada (delete fuera de `useProductTypes`) sigue presente: `confirmDeleteType`
+llama `deleteProductType(typeToDelete.id)` de `lib/api` directamente y luego
+llama `refetch()`.
+
+### 3. Calidad del código
+
+**`lib/contentNormalizer.ts` — nombre engañoso:**
+
+El archivo define configuración estática (`productFormFields` y
+`productTableColumns`), no normaliza contenido en tiempo de ejecución. El
+nombre implica una función transformadora que altera datos; en realidad solo
+define estructuras de configuración de la UI. Candidato a renombrarse como
+`lib/product-ui-config.ts` o `lib/inventory-schema.ts`. No está documentado
+en ninguno de los tres archivos.
+
+**`validateSupabaseTableId` devuelve `id: string`:**
+
+En `lib/validation/ids.ts`, el tipo de retorno exitoso es
+`{ success: true; id: string }` a pesar de haber validado que el valor es un
+entero positivo. Todos los callers inmediatamente hacen `Number(idValidation.id)`.
+Sería más directo y correcto devolver `id: number`.
+
+**`ProductSelectRow.tipo` con union de array:**
+
+En `database/items.ts`, `tipo` está tipado como
+`object | object[] | null`. `productFromSelect` normaliza con
+`Array.isArray(row.tipo) ? row.tipo[0] ?? null : row.tipo`. La relación es
+muchos productos a un tipo; el array no debería materializarse en runtime, pero
+el tipo refleja cómo Supabase puede retornar joins. Funcionalmente correcto; un
+comentario aclararía la intención.
+
+**Doble validación de ID en productos:**
+
+El Route Handler `app/api/products/[id]/route.ts` valida el id con
+`validateSupabaseTableId` y el servicio `lib/products.service.ts` también lo
+valida internamente con `parseProductId`. Un id inválido es rechazado dos veces.
+Funcional pero redundante; en el flujo real nunca llega al servicio con un id
+inválido porque el Route Handler ya lo rechaza.
+
+### 4. Modularidad y legibilidad
+
+La estructura de capas es clara y consistente. Hooks bien delimitados, servicios
+con responsabilidad única, validación encapsulada en `lib/validation/`. Los
+módulos de `lib/` tienen nombres descriptivos con dos excepciones ya mencionadas.
+
+**Dos componentes `StockBadge` con mismo nombre:**
+
+- `components/ui/StockBadge.tsx` — inventario. Recibe `existencia: number`
+  y computa el estado internamente.
+- `components/landing/stock-badge.tsx` — showcase de landing. Recibe
+  `level: StockLevel` y `value: number` ya calculados.
+
+Los propósitos son distintos y la coexistencia es razonable dado que están en
+namespaces diferentes (`ui/` vs `landing/`). El nombre idéntico puede generar
+confusión al buscar o importar si los paths no están completos en el editor.
+
+**`components/inventory/styles.ts` no documentado:**
+
+Existe un archivo de estilos compartidos para componentes de inventario. Es un
+detalle de implementación que no requiere mención en docs de alto nivel, pero
+conviene conocerlo como patrón de la codebase.
+
+### 5. Código basura y deudas confirmadas al 29 de junio
+
+| Elemento | Archivo | Estado |
+| --- | --- | --- |
+| `console.log("-> ir a configuracion")` | `NavbarMenu.tsx:42` | Pendiente |
+| Footer `href="#"` (Soporte, Privacidad, Contacto) | `Footer.tsx` | Pendiente |
+| `auth-button.tsx` sin consumidor activo | `components/auth-button.tsx` | Pendiente |
+| `logout-button.tsx` sin consumidor activo | `components/logout-button.tsx` | Pendiente |
+| `env-var-warning.tsx` sin consumidor activo | `components/env-var-warning.tsx` | Pendiente |
+| `theme-switcher.tsx` sin consumidor activo | `components/theme-switcher.tsx` | Pendiente |
+| `/login` en proxy sin página real | `lib/supabase/proxy.ts:6,12` | Pendiente |
+| Eliminación de tipos fuera de `useProductTypes` | `TypeDropdownMenu.tsx:112` | Pendiente |
+| `eslint-config-next` 15.3.1 vs Next.js 16 real | `package.json` | Pendiente |
+| Dependencias `latest` sin version fija | `package.json` | Pendiente |
+
+**Nuevas deudas identificadas en esta auditoría:**
+
+- `next-themes@0.4.6` en `dependencies` sin consumidor activo. El único
+  consumidor esperado es `theme-switcher.tsx`, que es un componente heredado
+  sin uso. La dependencia debería removerse junto con el componente.
+- `tsx` no declarado en `devDependencies` pero invocado directamente en el
+  script `seed:products`. Si no está instalado globalmente, `pnpm seed:products`
+  falla con "tsx: command not found". Agregar `tsx` a `devDependencies` o
+  documentar el requisito de instalación global.
+- `package-lock.json` coexiste con `pnpm-lock.yaml` en el root. Es
+  probablemente un residuo de npm previo al cambio a pnpm. Puede confundir
+  herramientas que detectan el gestor de paquetes por la presencia del lock file.
+- `lib/contentNormalizer.ts` nombre engañoso (ver sección 3).
+- `TypeDropdownMenu.tsx` exporta `TypeCombobox` — inconsistencia nombre de
+  archivo vs export.
+- Doble `console.error` en Route Handlers de tipos (ver sección 1).
+
+### 6. Sincronización con documentación
+
+Los tres documentos reflejan el estado del núcleo del inventario con fidelidad
+después de las actualizaciones previas del 29 de junio. Los nuevos hallazgos
+de esta auditoría son detalles de implementación que no estaban en el radar.
+Se actualizó Branch_Status.md para incluir las nuevas deudas identificadas.
+
+Finalizado omar

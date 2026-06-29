@@ -194,15 +194,18 @@ Route Handlers ni scripts.
 | Directorio | Responsabilidad |
 | --- | --- |
 | `app/` | Paginas, layouts, autenticacion y endpoints internos. |
+| `app/landing/` | Pagina de aterrizaje de la beta (publica). |
 | `components/inventory/` | Tabla, modal, selector de tipos, confirmaciones y errores del inventario. |
-| `components/layout/` | Navegacion y pie de pagina. |
+| `components/landing/` | Componentes de la pagina de aterrizaje (hero, features, countdown, etc.). |
+| `components/layout/` | Navegacion y pie de pagina del inventario. |
 | `components/ui/` | Primitivas reutilizables de interfaz. |
 | `hooks/` | Estado y operaciones interactivas del cliente. |
 | `lib/` | Cliente HTTP, servicios de dominio, validacion, seguridad, paginacion, busqueda, cache cliente, clientes Supabase y utilidades. |
+| `lib/landing/` | Constantes, datos y utilidades de la pagina de aterrizaje. |
 | `database/` | Capa de acceso a datos para las tablas `producto` y `tipo`. |
 | `supabase/migrations/` | Schema, constraints, indices, foreign keys y policies RLS versionadas. |
 | `types/` | Contratos compartidos de dominio y respuestas. |
-| `proxy.ts` | Punto de entrada del proxy de Next para refrescar y proteger sesiones. |
+| `proxy.ts` | Punto de entrada del proxy de Next.js 16 para refrescar y proteger sesiones. En Next.js 16 reemplaza a `middleware.ts`. |
 
 ## Proteccion y seguridad
 
@@ -253,6 +256,7 @@ llama Supabase directamente.
 | Ruta | Acceso | Proposito |
 | --- | --- | --- |
 | `/` | Autenticado | Inventario principal. |
+| `/landing` | Invitado | Pagina de aterrizaje de la beta. |
 | `/auth/login` | Invitado | Inicio de sesion. |
 | `/auth/sign-up` | Invitado | Registro. |
 | `/auth/sign-up-success` | Invitado | Confirmacion visual posterior al registro. |

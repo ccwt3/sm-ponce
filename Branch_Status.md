@@ -1,7 +1,7 @@
 # Branch Status - Auditoria de arquitectura
 
 Fecha de auditoria inicial: 13 de junio de 2026
-Actualizacion documental: 25 de junio de 2026
+Actualizacion documental: 29 de junio de 2026
 
 ## Resumen ejecutivo
 
@@ -23,6 +23,11 @@ En esos casos saltar hooks o `/api` es correcto.
 La discrepancia arquitectonica principal que queda esta en tipos de producto:
 la eliminacion se ejecuta desde el componente fuera del hook `useProductTypes`.
 Los Route Handlers de tipos ya delegan en `lib/product-types.service.ts`.
+
+Auditoria del 29 de junio: se confirmo que `proxy.ts` es la convencion
+correcta de Next.js 16 (reemplaza a `middleware.ts`). El proxy esta activo
+y funciona. El hallazgo inicial de la auditoria sobre este punto era incorrecto
+y fue corregido despues de verificar con `pnpm build`.
 
 ## Actualizacion del 22 de junio de 2026
 
@@ -112,6 +117,31 @@ bloqueado con `NODE_ENV=production`.
     paquete monolitico `radix-ui`.
 13. `eslint-config-next` esta fijado en 15.3.1 mientras el lockfile resuelve
     Next.js 16.2.4.
+14. `next-themes@0.4.6` esta en `dependencies` sin consumidor activo en el
+    runtime. Su unico consumidor esperado es `theme-switcher.tsx`, que es
+    un componente heredado sin uso. La dependencia deberia removerse junto
+    con el componente.
+15. `tsx` no esta declarado en `devDependencies` pero el script
+    `seed:products` lo invoca directamente. Si no esta instalado
+    globalmente, `pnpm seed:products` falla. Agregar `tsx` a
+    `devDependencies` o documentar el requisito de instalacion global.
+16. `package-lock.json` coexiste con `pnpm-lock.yaml` en el root.
+    Probablemente es un residuo de npm previo al cambio a pnpm. Puede
+    confundir herramientas que detectan el gestor de paquetes.
+17. `lib/contentNormalizer.ts` tiene un nombre enganoso: define configuracion
+    estatica de campos del formulario y columnas de la tabla de productos,
+    no normaliza contenido. Candidato a renombrarse como
+    `lib/product-ui-config.ts` o `lib/inventory-schema.ts`.
+18. `TypeDropdownMenu.tsx` exporta `TypeCombobox`. El nombre del archivo y el
+    nombre del export son distintos. Conviene alinear uno de los dos.
+19. `validateSupabaseTableId` en `lib/validation/ids.ts` devuelve
+    `id: string` en el caso exitoso, pero todos los callers hacen
+    `Number(idValidation.id)` inmediatamente. Seria mas directo devolver
+    `id: number`.
+20. Los Route Handlers de tipos (`app/api/product-types/route.ts` y
+    `[id]/route.ts`) tienen `console.error` propios ademas de los que ya
+    tiene `database/productTypes.ts`. Cada error del repositorio de tipos
+    se loggea dos veces en el servidor.
 
 ## Estado tecnico verificado
 
@@ -868,3 +898,103 @@ Supabase Auth y limpieza de algunos detalles de documentacion/schema.
    limits, plantillas y MFA segun necesidad.
 8. Mantener `README.md` y `Branch_Status.md` sincronizados cuando cambien las
    migraciones o reglas de negocio.
+
+---
+
+## Auditoria medium-depth — 29 de junio de 2026
+
+Cobertura: seguridad, conexiones entre modulos, arquitectura y casos especiales
+de render, calidad del codigo, modularidad-legibilidad y codigo basura.
+
+### Resumen de hallazgos nuevos
+
+| Area | Hallazgo | Prioridad |
+| --- | --- | --- |
+| Calidad | `lib/contentNormalizer.ts` nombre enganoso (deuda 17) | Baja |
+| Calidad | `validateSupabaseTableId` devuelve `string` en vez de `number` (deuda 19) | Baja |
+| Calidad | Doble `console.error` en Route Handlers de tipos (deuda 20) | Baja |
+| Modularidad | Dos `StockBadge` con mismo nombre en `ui/` y `landing/` | Baja |
+| Modularidad | `TypeDropdownMenu.tsx` exporta `TypeCombobox` (deuda 18) | Baja |
+| Codigo basura | `next-themes` instalado sin consumidor activo (deuda 14) | Media |
+| Codigo basura | `tsx` sin declarar en `devDependencies` (deuda 15) | Media |
+| Codigo basura | `package-lock.json` coexiste con `pnpm-lock.yaml` (deuda 16) | Baja |
+| Arquitectura | `lib/products.server.ts` es un re-export trivial de una linea | Informativo |
+| Seguridad | Sin hallazgos nuevos criticos | — |
+
+### Estado arquitectonico al 29 de junio
+
+Los flujos documentados en Branch_Status.md coinciden con el codigo real. La
+capa de seguridad esta en orden: proxy con `getClaims()`, servicios con
+`getUser()`, filtros por `user_id`, RLS, validacion de ids, Zod. El caso
+especial de render inicial (Server Component + Suspense + datos iniciales sin
+HTTP) esta implementado correctamente y documentado.
+
+Las deudas nuevas son de baja severidad. No bloquean la beta. El foco antes
+de produccion sigue siendo: pruebas automatizadas, policies RLS de tipos, y
+limpieza de los items heredados.
+
+---
+
+## Auditoria del 29 de junio de 2026
+
+Rama auditada: `deployment-config` (1 commit adelante de origin).
+
+Alcance: contraste estatico de los tres documentos contra la codebase actual.
+No se ejecutaron lint ni build.
+
+### Hallazgo critico 1: landing page nueva sin documentar
+
+La ruta `/landing` existe en codigo desde antes de esta auditoria y no
+aparecia en ningun documento.
+
+Estructura nueva confirmada:
+
+```txt
+app/landing/page.tsx
+components/landing/  (14 componentes)
+lib/landing/         (6 modulos: constants, countdown, use-countdown,
+                      showcase-data, features-data, onboarding-data)
+```
+
+Puntos clave:
+
+- `BETA_DEADLINE_ISO = "2026-07-02T23:59:59-06:00"`. El plazo de beta es el
+  2 de julio de 2026 y la landing muestra una cuenta regresiva hacia ese
+  momento.
+- `BetaModal` aparece automaticamente despues de 600 ms con un CTA que lleva
+  a `/auth/login` para registro.
+- `lib/supabase/proxy.ts` fue actualizado para incluir `/landing` en
+  `publicPaths` y `guestOnlyPaths`. La intencion es que la landing sea
+  accesible sin autenticacion y que usuarios autenticados sean redirigidos al
+  intentar visitarla.
+- La landing usa su propio layout de marketing, sin `Navbar` ni `Footer` del
+  inventario.
+
+### Hallazgo 2 — `proxy.ts` es la convencion correcta de Next.js 16 (CORREGIDO)
+
+La auditoria inicial marco `proxy.ts` como un archivo inactivo. Al verificarlo
+con `pnpm build` se confirmo que Next.js 16 cambio la convencion: el archivo
+de proxy/middleware ahora debe llamarse `proxy.ts` y exportar `proxy`. El build
+con el nombre `proxy.ts` compila sin warnings; con `middleware.ts` Next.js 16
+emite un warning de deprecacion. El archivo estaba correcto desde el inicio.
+
+### Hallazgo 3: dependencias sin version fija
+
+`package.json` usa `"latest"` para `next`, `@supabase/ssr` y
+`@supabase/supabase-js`. El lockfile protege la instalacion local, pero un
+entorno limpio de CI o un Vercel redeploy sin cache puede instalar una version
+distinta.
+
+Accion recomendada: fijar las versiones que resuelve el lockfile actual.
+
+### Deudas confirmadas pendientes al 29 de junio
+
+| Deuda | Ubicacion |
+| --- | --- |
+| Eliminacion de tipos fuera de `useProductTypes` | `TypeDropdownMenu.tsx` |
+| `console.log` en Configuracion | `NavbarMenu.tsx:43` |
+| Footer links sin destino | `Footer.tsx` (tres `href="#"`) |
+| Componentes heredados sin consumidor | `auth-button`, `logout-button`, `env-var-warning`, `theme-switcher` |
+| Ruta `/login` en proxy sin pagina real | `lib/supabase/proxy.ts:6` |
+| No hay pruebas automatizadas | Todo el proyecto |
+| `eslint-config-next` 15.3.1 vs Next.js 16 | `package.json` |
