@@ -3,14 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
 const publicPathPrefixes = ["/auth"];
-const publicPaths = ["/login", "/landing"];
+const publicPaths = ["/login", "/"];
 const guestOnlyPaths = [
   "/auth/forgot-password",
   "/auth/login",
   "/auth/sign-up",
   "/auth/sign-up-success",
   "/login",
-  "/landing",
+  "/",
 ];
 
 function isPublicPath(pathname: string) {
@@ -28,7 +28,7 @@ function isGuestOnlyPath(pathname: string) {
 
 export function getSafeRedirectPath(path: string | null) {
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
-    return "/";
+    return "/home";
   }
 
   let url: URL;
