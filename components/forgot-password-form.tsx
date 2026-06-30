@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import posthog from "posthog-js";
 
 export function ForgotPasswordForm({
   className,
@@ -35,8 +36,10 @@ export function ForgotPasswordForm({
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
       if (error) throw error;
+      posthog.capture("password_reset_requested");
       setSuccess(true);
     } catch (error: unknown) {
+      posthog.captureException(error);
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);

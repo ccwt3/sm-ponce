@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import posthog from "posthog-js";
 
 export function UpdatePasswordForm({
   className,
@@ -33,8 +34,10 @@ export function UpdatePasswordForm({
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      posthog.capture("password_updated");
       router.push("/");
     } catch (error: unknown) {
+      posthog.captureException(error);
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);

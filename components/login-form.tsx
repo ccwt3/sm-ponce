@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import posthog from "posthog-js";
 
 function getSafeRedirectPath(path: string | null): string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) {
@@ -44,10 +45,13 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
+      posthog.identify(email, { email });
+      posthog.capture("user_signed_in", { email });
       const nextPath = new URLSearchParams(window.location.search).get("next");
       // Auth changes must discard Next's router cache and client component state.
       window.location.replace(getSafeRedirectPath(nextPath));
     } catch (error: unknown) {
+      posthog.captureException(error);
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/api-errors";
 import { getClientIp } from "@/lib/request-ip";
 import { acceptCurrentTerms } from "@/lib/terms.service";
+import { createClient } from "@/lib/supabase/server";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 /**
  * Registra la aceptacion de la version vigente de los terminos por el usuario
@@ -12,6 +14,16 @@ import { acceptCurrentTerms } from "@/lib/terms.service";
 export async function POST(req: NextRequest) {
   try {
     await acceptCurrentTerms(getClientIp(req));
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      captureServerEvent({
+        distinctId: user.email,
+        event: "terms_accepted",
+        properties: { email: user.email },
+      });
+    }
 
     return NextResponse.json({ data: { accepted: true } });
   } catch (error) {

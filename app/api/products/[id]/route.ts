@@ -6,6 +6,8 @@ import {
 } from "@/lib/products.service";
 import { errorResponse } from "@/lib/api-errors";
 import { validateSupabaseTableId } from "@/lib/validation/ids";
+import { createClient } from "@/lib/supabase/server";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export async function GET(
   _req: NextRequest,
@@ -50,6 +52,16 @@ export async function PUT(
     const rawBody = await req.json().catch(() => null);
     const product = await updateProduct(id, rawBody);
 
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      captureServerEvent({
+        distinctId: user.email,
+        event: "product_updated",
+        properties: { product_id: id },
+      });
+    }
+
     return NextResponse.json({ data: product });
   } catch (error) {
     return errorResponse(error, "Error al actualizar producto");
@@ -73,6 +85,16 @@ export async function DELETE(
 
     const { id } = idValidation;
     const deletedId = await deleteProduct(id);
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      captureServerEvent({
+        distinctId: user.email,
+        event: "product_deleted",
+        properties: { product_id: id },
+      });
+    }
 
     return NextResponse.json({ data: { id: deletedId } });
   } catch (error) {

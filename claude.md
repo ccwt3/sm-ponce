@@ -2,7 +2,7 @@
 
 Este proyecto esta desarrollado en NextJs, usando supabase como base de datos y vercel como proveedor de deploy.
 
-Lee README.md, Branch_changes.md y Branch_Status.md y usalos como mapas al momento de navegar por la codebase. 
+Lee README.md y Branch_Status.md y usalos como mapas al momento de navegar por la codebase. 
 
 Al momento de hacer los cambios pedidos por mi, hay que tener siempre en cuenta:
  - Buenas practicas de programacion.

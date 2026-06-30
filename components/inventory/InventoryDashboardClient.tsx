@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Search } from "lucide-react";
+import posthog from "posthog-js";
 
 import { ConfirmDeleteDialog } from "@/components/inventory/ConfirmDeleteDialog";
 import { FloatingErrorNotice } from "@/components/inventory/FloatingErrorNotice";
@@ -57,6 +58,23 @@ export function InventoryDashboardClient({
   } = useInventory({ initialError, initialPage });
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+  const searchCaptureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const query = event.target.value;
+    setSearch(query);
+    if (searchCaptureTimer.current) clearTimeout(searchCaptureTimer.current);
+    if (query.trim()) {
+      searchCaptureTimer.current = setTimeout(() => {
+        posthog.capture("inventory_searched", { query });
+      }, 600);
+    }
+  };
+
+  const handleOpenCreate = () => {
+    posthog.capture("product_create_modal_opened");
+    openCreate();
+  };
 
   const closeDeleteDialog = () => {
     setProductToDelete(null);
@@ -96,12 +114,12 @@ export function InventoryDashboardClient({
               placeholder="Buscar"
               maxLength={MAX_PRODUCT_SEARCH_LENGTH}
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={handleSearchChange}
               className={cn(inventoryForm.input, "w-52 pl-8 pr-3")}
             />
           </div>
           <button
-            onClick={openCreate}
+            onClick={handleOpenCreate}
             className={inventoryButton.primary}
           >
             Agregar

@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import posthog from "posthog-js";
 
 export function SignUpForm({
   className,
@@ -68,8 +69,11 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
+      posthog.identify(email, { email });
+      posthog.capture("user_signed_up", { email });
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
+      posthog.captureException(error);
       setError(error instanceof Error ? error.message : "Ocurrió un error");
     } finally {
       setIsLoading(false);

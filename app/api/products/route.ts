@@ -7,6 +7,8 @@ import {
 import { errorResponse } from "@/lib/api-errors";
 import { parseProductPage } from "@/lib/products.pagination";
 import { parseProductSearch } from "@/lib/products.search";
+import { createClient } from "@/lib/supabase/server";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,6 +34,20 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.json().catch(() => null);
     const product = await createProduct(rawBody);
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      captureServerEvent({
+        distinctId: user.email,
+        event: "product_created",
+        properties: {
+          product_id: product.id,
+          nombre: product.nombre,
+          tipo_id: product.tipo_id,
+        },
+      });
+    }
 
     return NextResponse.json({ data: product }, { status: 201 });
   } catch (error) {
