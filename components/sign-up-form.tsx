@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  CURRENT_TERMS_VERSION,
+  PRIVACY_URL,
+  TERMS_ACCEPTED_METADATA_KEY,
+  TERMS_URL,
+  TERMS_VERSION_METADATA_KEY,
+} from "@/lib/terms";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -23,6 +30,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -39,12 +47,24 @@ export function SignUpForm({
       return;
     }
 
+    if (!acceptedTerms) {
+      setError(
+        "Debes aceptar los Términos de Servicio y el Aviso de Privacidad",
+      );
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            [TERMS_ACCEPTED_METADATA_KEY]: true,
+            [TERMS_VERSION_METADATA_KEY]: CURRENT_TERMS_VERSION,
+          },
         },
       });
       if (error) throw error;
@@ -100,6 +120,40 @@ export function SignUpForm({
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
                 />
+              </div>
+              <div className="flex items-start gap-2">
+                <input
+                  id="accept-terms"
+                  type="checkbox"
+                  required
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1"
+                />
+                <Label
+                  htmlFor="accept-terms"
+                  className="text-sm font-normal leading-snug"
+                >
+                  Acepto los{" "}
+                  <a
+                    href={TERMS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Términos de Servicio
+                  </a>{" "}
+                  y el{" "}
+                  <a
+                    href={PRIVACY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Aviso de Privacidad
+                  </a>
+                  .
+                </Label>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>

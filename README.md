@@ -77,7 +77,7 @@ Los tipos disponibles pertenecen al usuario autenticado.
 La aplicacion incluye:
 
 - Inicio de sesion.
-- Registro.
+- Registro con aceptacion obligatoria de terminos y condiciones.
 - Confirmacion por correo.
 - Recuperacion de contrasena.
 - Actualizacion de contrasena.
@@ -251,6 +251,38 @@ La relacion entre productos y tipos usa una FK compuesta `(tipo_id, user_id)`,
 lo que evita asociar un producto con un tipo de otro usuario incluso si alguien
 llama Supabase directamente.
 
+### Aceptacion de terminos y condiciones
+
+El uso de la aplicacion exige aceptar la version vigente de los terminos. La
+version unica de verdad vive en `lib/terms.ts` como `CURRENT_TERMS_VERSION` y se
+registra en la tabla `terms_acceptance` con un modelo append-only: una fila por
+combinacion `(user_id, terms_version)`. Esto permite versionar los terminos sin
+necesidad de una policy `UPDATE` (el RLS solo expone `INSERT` y `SELECT`).
+
+La proteccion no depende del frontend. El gate real es server-side y vive en el
+mismo choke point por el que pasa todo el dominio:
+
+- `requireAcceptedTerms()` (`lib/terms.service.ts`) reemplaza a
+  `getCurrentUserId()` en los servicios de productos y tipos. Resuelve el
+  usuario, exige una aceptacion de la version vigente y lanza
+  `TermsRequiredError` (HTTP 403) si no existe.
+- Como todo acceso a datos de dominio (SSR inicial, listados, busqueda y
+  mutaciones) pasa por esos servicios, ni el frontend ni un `curl` pueden operar
+  sin una aceptacion registrada.
+- El servidor fija siempre la version desde `CURRENT_TERMS_VERSION`; nunca confia
+  en la version enviada por el cliente. El RLS garantiza que cada usuario solo
+  pueda insertar su propia aceptacion.
+
+Puntos de registro de la aceptacion:
+
+- En el registro, un checkbox obligatorio guarda la intencion en
+  `user_metadata`. Al confirmar el email (`app/auth/confirm/route.ts`), si esa
+  marca existe, se registra la aceptacion (best-effort, con IP).
+- Quien llegue autenticado sin aceptacion (por ejemplo, un registro por `curl`
+  sin checkbox, o un usuario anterior a esta funcionalidad) ve un popup
+  no-descartable en `/home` que registra la aceptacion via
+  `POST /api/terms/accept` antes de poder usar la aplicacion.
+
 ## Rutas
 
 | Ruta | Acceso | Proposito |
@@ -268,6 +300,7 @@ llama Supabase directamente.
 | `/api/products/[id]` | Autenticado | Consultar, editar y eliminar un producto. |
 | `/api/product-types` | Autenticado | Listar y crear tipos. |
 | `/api/product-types/[id]` | Autenticado | Eliminar un tipo. |
+| `/api/terms/accept` | Autenticado | Registrar la aceptacion de los terminos vigentes. |
 
 ## Manejo de errores
 
@@ -414,6 +447,20 @@ id
 tipo_de_producto
 user_id
 ```
+
+### `terms_acceptance`
+
+```txt
+id
+user_id
+terms_version
+accepted_at
+ip_address
+```
+
+Modelo append-only: una fila por `(user_id, terms_version)`. La unicidad la
+garantiza `unique (user_id, terms_version)`. RLS expone solo `INSERT` y `SELECT`
+para `authenticated` con `auth.uid() = user_id`.
 
 `producto.tipo_id` almacena el identificador de `tipo` en la base de datos. En
 el modelo normalizado que consume actualmente la UI, la propiedad `tipo_id`

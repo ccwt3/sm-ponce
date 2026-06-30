@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
 const publicPathPrefixes = ["/auth"];
-const publicPaths = ["/login", "/"];
+const publicPaths = ["/login", "/", "/terms.html", "/privacy.html"];
 const guestOnlyPaths = [
   "/auth/forgot-password",
   "/auth/login",

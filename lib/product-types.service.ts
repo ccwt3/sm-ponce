@@ -2,7 +2,7 @@ import "server-only";
 
 import productTypesDatabase from "@/database/productTypes";
 import { HttpError } from "@/lib/api-errors";
-import { getCurrentUserId } from "@/lib/server-utils";
+import { requireAcceptedTerms } from "@/lib/terms.service";
 import { validateSupabaseTableId } from "@/lib/validation/ids";
 import { validateProductTypeInput } from "@/lib/validation/productTypes";
 import type { ProductType } from "@/types";
@@ -17,7 +17,7 @@ export class ProductTypesServiceError extends HttpError {
 }
 
 export async function getProductTypes(): Promise<ProductType[]> {
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
 
   return productTypesDatabase.getAllTypesOfProducts(userId);
 }
@@ -30,7 +30,7 @@ export async function createProductType(input: unknown): Promise<ProductType> {
   }
 
   const newProductType = validation.data;
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const existingType = await productTypesDatabase.findType(
     newProductType,
     userId,
@@ -54,7 +54,7 @@ export async function deleteProductType(id: string): Promise<number> {
   }
 
   const typeId = Number(idValidation.id);
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const deleted = await productTypesDatabase.deleteTypeOfProduct(
     typeId,
     userId,

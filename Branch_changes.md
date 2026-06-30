@@ -685,3 +685,56 @@ de esta auditoría son detalles de implementación que no estaban en el radar.
 Se actualizó Branch_Status.md para incluir las nuevas deudas identificadas.
 
 Finalizado omar
+
+---
+
+## Aceptación de términos y condiciones — 30 de junio de 2026
+
+Rama: `pre-marketing`
+
+Se implementó el flujo completo de aceptación de términos (versión `2026-06-29`,
+coincide con la fecha de `public/terms.html` y `public/privacy.html`).
+
+### Archivos nuevos
+
+- `lib/terms.ts` — constantes compartidas (cliente y servidor):
+  `CURRENT_TERMS_VERSION`, rutas a los HTML legales y claves de `user_metadata`.
+- `lib/request-ip.ts` — `getClientIp()` para obtener la IP de los headers de
+  deploy (primer valor de `x-forwarded-for`, o `x-real-ip`).
+- `database/termsAcceptance.ts` — acceso a datos de `terms_acceptance`
+  (`hasAccepted`, `recordAcceptance` idempotente ante duplicados `23505`).
+- `lib/terms.service.ts` — servicio server-only: `hasAcceptedCurrentTerms`,
+  `requireAcceptedTerms` (lanza `TermsRequiredError` 403), `acceptCurrentTerms`
+  y `recordAcceptanceAfterConfirmation` (best-effort tras confirmar email).
+- `app/api/terms/accept/route.ts` — `POST` que registra la aceptación vigente.
+- `components/terms/TermsAcceptanceGate.tsx` — popup no-descartable que llama al
+  endpoint y recarga.
+
+### Archivos modificados
+
+- `components/sign-up-form.tsx` — checkbox obligatorio con enlaces a los HTML;
+  pasa `options.data` (intención de aceptación) a `signUp`.
+- `app/auth/confirm/route.ts` — tras `verifyOtp`, registra la aceptación si el
+  usuario marcó el checkbox al registrarse.
+- `lib/products.service.ts` y `lib/product-types.service.ts` — reemplazan
+  `getCurrentUserId()` por `requireAcceptedTerms()`. Este es el choke point que
+  hace el gate no-bypasseable: todo el dominio (SSR y API) pasa por aquí.
+- `app/home/page.tsx` — si el dominio lanza `TermsRequiredError`, renderiza el
+  popup en lugar del inventario.
+- `lib/supabase/proxy.ts` — `/terms.html` y `/privacy.html` agregados a
+  `publicPaths` para que los invitados puedan abrirlos durante el registro.
+
+### Resistencia a bypass
+
+- Sin aceptación, todo endpoint de dominio responde `403` (frente a `curl`).
+- Con gate sin aceptación, `/home` no renderiza el inventario, solo el popup.
+- La versión se fija siempre en el servidor; el cliente no la elige.
+- El RLS asegura que cada usuario solo inserte su propia aceptación.
+
+### Pendiente operativo (Supabase)
+
+El esquema asume modelo append-only `unique (user_id, terms_version)` y `anon`
+sin grants. El SQL para ejecutar manualmente en la consola de Supabase se
+entregó en la sesión (no se generó migración por indicación de Omar).
+
+[Listo omar]

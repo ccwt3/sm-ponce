@@ -3,12 +3,14 @@ import { Suspense } from "react";
 import { InventoryDashboardClient } from "@/components/inventory/InventoryDashboardClient";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { TermsAcceptanceGate } from "@/components/terms/TermsAcceptanceGate";
 import { getProductsForDashboard } from "@/lib/products.server";
 import {
   DEFAULT_PRODUCT_PAGE,
   PRODUCT_PAGE_SIZE,
 } from "@/lib/products.pagination";
 import { AuthRequiredError } from "@/lib/server-utils";
+import { TermsRequiredError } from "@/lib/terms.service";
 import { redirect } from "next/navigation";
 import type { ProductPage } from "@/types";
 
@@ -26,6 +28,10 @@ async function InventoryDashboardServer() {
   } catch (error) {
     if (error instanceof AuthRequiredError) {
       redirect("/auth/login");
+    }
+
+    if (error instanceof TermsRequiredError) {
+      return <TermsAcceptanceGate />;
     }
 
     initialError = "Error al obtener productos";

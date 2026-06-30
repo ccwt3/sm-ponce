@@ -7,7 +7,7 @@ import {
   DEFAULT_PRODUCT_PAGE,
   PRODUCT_PAGE_SIZE,
 } from "@/lib/products.pagination";
-import { getCurrentUserId } from "@/lib/server-utils";
+import { requireAcceptedTerms } from "@/lib/terms.service";
 import { validateSupabaseTableId } from "@/lib/validation/ids";
 import {
   validateCreateProductInput,
@@ -84,7 +84,7 @@ export async function getProductsForDashboard(
     search = "",
   }: GetProductsOptions = {},
 ): Promise<ProductPage> {
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const productPage = await itemsDatabase.getProductsPage({
     page,
     search,
@@ -100,7 +100,7 @@ export async function getProductsForDashboard(
 }
 
 export async function getProductById(id: string): Promise<Product> {
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const productId = parseProductId(id);
   const product = await itemsDatabase.getProductById(productId, userId);
 
@@ -119,7 +119,7 @@ export async function createProduct(input: unknown): Promise<Product> {
   }
 
   const body = validation.data;
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const productType = await resolveProductType(body.tipo_id, userId);
 
   const savedProduct = await itemsDatabase.createProduct({
@@ -142,7 +142,7 @@ export async function updateProduct(
   }
 
   const body = validation.data;
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const productId = parseProductId(id);
   const { tipo_id: typeName, ...productFields } = body;
   const productType = typeName
@@ -172,7 +172,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<string> {
-  const userId = await getCurrentUserId();
+  const userId = await requireAcceptedTerms();
   const productId = parseProductId(id);
   const deletedId = await itemsDatabase.deleteProduct(productId, userId);
 
