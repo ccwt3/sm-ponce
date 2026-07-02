@@ -2,9 +2,9 @@ import ClientAhhFooter from "./client-ahh-footer";
 import { Suspense } from "react";
 
 const FOOTER_LINKS = [
-  { label: "Soporte", href: "#" },
-  { label: "Privacidad", href: "#" },
-  { label: "Contacto", href: "#" },
+  { label: "Terminos", href: "/terms.html" },
+  { label: "Privacidad", href: "/privacy.html" },
+  { label: "contacto@reicot.dev", href: "#" },
 ] as const;
 
 export function SiteFooter() {
