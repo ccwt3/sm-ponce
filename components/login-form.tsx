@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import Link from "next/link";
 import { useState } from "react";
 import posthog from "posthog-js";
@@ -46,7 +47,7 @@ export function LoginForm({
       });
       if (error) throw error;
       posthog.identify(email, { email });
-      posthog.capture("user_signed_in", { email });
+      posthog.capture("user_signed_in", { email, method: "password" });
       const nextPath = new URLSearchParams(window.location.search).get("next");
       // Auth changes must discard Next's router cache and client component state.
       window.location.replace(getSafeRedirectPath(nextPath));
@@ -103,6 +104,11 @@ export function LoginForm({
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
               </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />o continúa con
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <GoogleSignInButton />
             </div>
             <div className="mt-4 text-center text-sm">
               ¿No tienes una cuenta?{" "}

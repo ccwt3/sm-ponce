@@ -42,6 +42,27 @@ The wizard has completed a deep integration of PostHog analytics into Motorefacc
 
 ---
 
+## Actualización — Google OAuth y registro sin confirmación (2 jul 2026)
+
+- Se agregó login con Google. Como el flujo OAuth es un redirect completo, el
+  código de captura de los formularios no corre para esos usuarios; el evento
+  `user_signed_in` (y `terms_accepted` en el primer ingreso) ahora también se
+  capturan server-side en `app/auth/callback/route.ts` vía `captureServerEvent`.
+- `user_signed_in` y `user_signed_up` ahora incluyen la propiedad
+  `method: "password" | "google"` para segmentar por método de autenticación.
+  Los eventos históricos sin esta propiedad son implícitamente `password`.
+- Se desactivó la confirmación por email: el registro con contraseña entra
+  directo a `/home` y graba la aceptación de términos de inmediato vía
+  `POST /api/terms/accept` (antes se grababa en `/auth/confirm`, que ya no corre
+  para el registro). Esto **aumenta** el volumen de `terms_accepted` y mejora la
+  conversión del funnel signup→producto: esperar una discontinuidad respecto al
+  histórico y anotarla en PostHog.
+- La identidad de los usuarios de Google la resuelve
+  `components/posthog-auth-identifier.tsx` (identify por email al restaurarse la
+  sesión), sin cambios.
+
+---
+
 ## Next steps
 
 We've built some insights and a dashboard to keep an eye on user behavior, based on the events we just instrumented:

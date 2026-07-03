@@ -1,5 +1,63 @@
 # Branch changes
 
+## Sesion: Google OAuth + registro sin confirmacion de email (2 jul 2026)
+
+Origen: agregar login con Google y quitar la pantalla de confirmacion (registro
+entra directo al dashboard), cuidando que las analiticas de PostHog no se
+rompan. La configuracion en la consola de Supabase (Confirm email OFF, provider
+Google ON, redirect URLs con `/auth/callback`) ya la hizo Omar de antemano; esta
+sesion es solo codigo y documentacion.
+
+### Lo que se hizo
+
+1. **Ruta callback de OAuth** (`app/auth/callback/route.ts`, nueva). Equivalente
+   social de `/auth/confirm`: intercambia el `code` PKCE por sesion
+   (`exchangeCodeForSession`). Como el redirect saca al navegador de la app,
+   ningun formulario cliente corre, asi que este es el punto server-side donde
+   se registra la aceptacion de terminos (best-effort, con el popup de `/home`
+   como respaldo) y se captura `user_signed_in` con `method: "google"` via
+   `captureServerEvent`. Reutiliza `getSafeRedirectPath`, `getClientIp`,
+   `hasAcceptedCurrentTerms`/`acceptCurrentTerms` y `captureServerEvent`.
+
+2. **Boton de Google** (`components/google-sign-in-button.tsx`, nuevo). Dispara
+   `signInWithOAuth({ provider: "google" })` con `redirectTo` a `/auth/callback`
+   (conserva `?next=` cuando existe). Logo oficial en SVG inline (sin dependencia
+   nueva). Muestra el aviso legal de terminos junto al boton, porque los usuarios
+   de Google no ven el checkbox del registro. Se monta en login y registro.
+
+3. **`login-form.tsx`**: `user_signed_in` ahora lleva `method: "password"`; se
+   agrego el boton de Google con separador "o continua con".
+
+4. **`sign-up-form.tsx`**: `user_signed_up` ahora lleva `method: "password"`.
+   Sin confirmacion, `signUp()` ya devuelve sesion, asi que tras el registro se
+   graba la aceptacion de terminos de inmediato (best-effort via
+   `POST /api/terms/accept`, que ya emite `terms_accepted`) y se redirige a
+   `/home` con `window.location.replace` (antes iba a `/auth/sign-up-success`).
+   Se agrego el boton de Google y se quito el `useRouter` que quedo sin uso.
+
+5. **Pantalla intermedia eliminada**: se borro `app/auth/sign-up-success/` y se
+   quito `/auth/sign-up-success` de `guestOnlyPaths` en `lib/supabase/proxy.ts`.
+   `app/auth/confirm/route.ts` se conserva: sigue sirviendo la recuperacion de
+   contrasena (`type=recovery`).
+
+### Notas de analitica (PostHog)
+
+- Nuevo atributo `method` en `user_signed_in`/`user_signed_up`; el historico sin
+  el es implicitamente `password`.
+- `terms_accepted` sube de volumen (ahora sale del registro y del callback, no
+  del popup ocasional). El funnel signup->producto mejora su conversion. Habra
+  una discontinuidad respecto al historico: conviene poner una annotation en
+  PostHog el dia del deploy.
+- Los eventos de OAuth no se pueden validar en localhost: `instrumentation-client.ts`
+  hace opt-out en `localhost`. Verificar en un deploy de preview.
+- La identidad de los usuarios de Google la cubre `posthog-auth-identifier.tsx`
+  (identify por email al restaurarse la sesion); no se toco.
+
+Documentacion: se actualizo `README.md` (seccion de Autenticacion, tabla de
+rutas y checklist de Supabase Auth) y `posthog-setup-report.md` (atributo
+`method` y punto de captura del callback). `pnpm lint` y `pnpm build` pasan
+limpios. [Listo omar]
+
 ## Sesion: Seccion FAQ en la landing (2 jul 2026)
 
 Se agrego una seccion de preguntas frecuentes a la landing (`app/page.tsx`),

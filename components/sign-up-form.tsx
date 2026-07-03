@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import {
   CURRENT_TERMS_VERSION,
   PRIVACY_URL,
@@ -20,7 +21,6 @@ import {
   TERMS_VERSION_METADATA_KEY,
 } from "@/lib/terms";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import posthog from "posthog-js";
 
@@ -34,7 +34,6 @@ export function SignUpForm({
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +69,17 @@ export function SignUpForm({
       });
       if (error) throw error;
       posthog.identify(email, { email });
-      posthog.capture("user_signed_up", { email });
-      router.push("/auth/sign-up-success");
+      posthog.capture("user_signed_up", { email, method: "password" });
+      // Sin confirmacion de email, signUp ya devuelve sesion: se graba la
+      // aceptacion de terminos de inmediato (best-effort, reutiliza el endpoint
+      // que ya emite `terms_accepted`). El popup de /home queda como respaldo.
+      try {
+        await fetch("/api/terms/accept", { method: "POST" });
+      } catch {
+        // Ignorado a proposito: el gate server-side de /home cubre el registro.
+      }
+      // Un cambio de auth debe descartar el router cache y el estado de cliente.
+      window.location.replace("/home");
     } catch (error: unknown) {
       posthog.captureException(error);
       setError(error instanceof Error ? error.message : "Ocurrió un error");
@@ -163,6 +171,11 @@ export function SignUpForm({
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creando cuenta..." : "Registrarse"}
               </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />o continúa con
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <GoogleSignInButton />
             </div>
             <div className="mt-4 text-center text-sm">
               ¿Ya tienes una cuenta?{" "}

@@ -76,10 +76,11 @@ Los tipos disponibles pertenecen al usuario autenticado.
 
 La aplicacion incluye:
 
-- Inicio de sesion.
-- Registro con aceptacion obligatoria de terminos y condiciones.
-- Confirmacion por correo.
-- Recuperacion de contrasena.
+- Inicio de sesion con correo y contrasena.
+- Inicio de sesion con Google (OAuth) desde login y registro.
+- Registro con aceptacion obligatoria de terminos y condiciones. El registro
+  entra directo al inventario: la confirmacion por correo esta desactivada.
+- Recuperacion de contrasena (envia correo con enlace).
 - Actualizacion de contrasena.
 - Cierre de sesion desde la pagina principal.
 
@@ -291,11 +292,11 @@ Puntos de registro de la aceptacion:
 | `/landing` | Invitado | Pagina de aterrizaje de la beta. |
 | `/auth/login` | Invitado | Inicio de sesion. |
 | `/auth/sign-up` | Invitado | Registro. |
-| `/auth/sign-up-success` | Invitado | Confirmacion visual posterior al registro. |
 | `/auth/forgot-password` | Invitado | Solicitud de recuperacion. |
 | `/auth/update-password` | Publica dentro del flujo de recuperacion | Cambio de contrasena. |
 | `/auth/error` | Publica | Pantalla de error de autenticacion. |
-| `/auth/confirm` | Publica | Confirmacion de OTP enviado por Supabase. |
+| `/auth/confirm` | Publica | Confirmacion de OTP de recuperacion de contrasena. |
+| `/auth/callback` | Publica | Intercambia el codigo OAuth (Google) por sesion. |
 | `/api/products` | Autenticado | Listar y crear productos. |
 | `/api/products/[id]` | Autenticado | Consultar, editar y eliminar un producto. |
 | `/api/product-types` | Autenticado | Listar y crear tipos. |
@@ -405,9 +406,10 @@ Usa valores exactos para produccion:
 
 | Ajuste | Valor productivo requerido |
 | --- | --- |
-| Confirmacion de email | Activada. |
+| Confirmacion de email | Desactivada. El registro entra directo al inventario; la recuperacion de contrasena sigue enviando correo. |
+| Proveedor Google (OAuth) | Activado. Client ID y Secret desde Google Cloud Console; redirect de Supabase `https://<proyecto>.supabase.co/auth/v1/callback`. |
 | Site URL | `https://<dominio-productivo>` |
-| Redirect URLs permitidas | `https://<dominio-productivo>/` y `https://<dominio-productivo>/auth/update-password` |
+| Redirect URLs permitidas | `https://<dominio-productivo>/`, `https://<dominio-productivo>/auth/update-password` y `https://<dominio-productivo>/auth/callback` |
 | Redirect URLs locales | Solo en proyecto local/staging separado: `http://localhost:3000/` y `http://localhost:3000/auth/update-password` |
 | Wildcards de redirect | No usar comodines amplios ni dominios no controlados en produccion. |
 | Politica minima de contrasena | Minimo 12 caracteres, con minusculas, mayusculas, numeros y simbolos. Activar bloqueo de contrasenas filtradas si el plan lo permite. |
@@ -417,8 +419,9 @@ Usa valores exactos para produccion:
 
 Flujos a validar manualmente despues de aplicar la configuracion:
 
-- Registro y confirmacion de correo terminan en `/`.
-- Login redirige al inventario.
+- Registro con correo entra directo al inventario, sin correo de confirmacion.
+- Login con correo redirige al inventario.
+- Login con Google (cuenta nueva y existente) termina en el inventario.
 - Recuperacion de contrasena abre `/auth/update-password`.
 - Actualizacion de contrasena permite volver a iniciar sesion.
 

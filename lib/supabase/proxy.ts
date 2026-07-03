@@ -8,7 +8,6 @@ const guestOnlyPaths = [
   "/auth/forgot-password",
   "/auth/login",
   "/auth/sign-up",
-  "/auth/sign-up-success",
   "/login",
   "/",
 ];
