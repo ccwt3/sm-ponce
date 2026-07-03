@@ -1,4 +1,4 @@
-import type { StockLevel } from "../../lib/landing/showcase-data";
+import type { StockLevel } from "@/lib/landing/showcase-data";
 
 const STOCK_LEVEL_STYLES: Record<StockLevel, string> = {
   ok: "bg-brand-stock-ok-bg text-brand-stock-ok-text",

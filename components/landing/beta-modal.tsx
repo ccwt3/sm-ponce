@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, ArrowRight } from "lucide-react";
-import { LOGIN_PATH, BETA_DEADLINE } from "../../lib/landing/constants";
+import { SIGNUP_PATH, BETA_DEADLINE } from "../../lib/landing/constants";
 import { CountdownBlocks } from "./countdown-blocks";
 
 const OPEN_DELAY_MS = 600;
@@ -77,7 +77,7 @@ export function BetaModal() {
         </div>
 
         <Link
-          href={LOGIN_PATH}
+          href={SIGNUP_PATH}
           className="flex w-full items-center justify-center gap-2 rounded-[9px] bg-brand-black px-5 py-3.5 text-[15px] font-bold text-brand-white transition-colors hover:bg-brand-black-hover active:scale-[0.98]"
         >
           Asegurar mi lugar gratis

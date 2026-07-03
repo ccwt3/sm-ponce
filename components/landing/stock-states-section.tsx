@@ -1,9 +1,9 @@
 import { StockBadge } from "./stock-badge";
-import type { StockLevel } from "../../lib/landing/showcase-data";
+import type { StockLevel } from "@/lib/landing/showcase-data";
 
 const STOCK_EXAMPLES: Array<{ label: string; level: StockLevel; value: number }> = [
   { label: "Stock saludable", level: "ok", value: 30 },
-  { label: "Por agotarse", level: "low", value: 2 },
+  { label: "Por agotarse", level: "low", value: 5 },
   { label: "Sin existencia", level: "empty", value: 0 },
 ];
 

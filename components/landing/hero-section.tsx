@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { LOGIN_PATH, SHOWCASE_ANCHOR_ID } from "../../lib/landing/constants";
+import { SIGNUP_PATH, SHOWCASE_ANCHOR_ID } from "../../lib/landing/constants";
 import { InventoryShowcase } from "./inventory-showcase";
 
 export function HeroSection() {
@@ -33,12 +33,12 @@ export function HeroSection() {
 
           <p className="mt-4 max-w-[520px] text-base leading-relaxed text-brand-text-secondary sm:text-[17.5px]">
             Registra modelo, medida, existencia y precios de cada pieza. Sabe en segundos qué se
-            está agotando, qué ganancia deja cada venta y qué buscar cuando llega el cliente.
+            está agotando y qué buscar cuando llega el cliente.
           </p>
 
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
-              href={LOGIN_PATH}
+              href={SIGNUP_PATH}
               className="inline-flex items-center gap-2 rounded-[9px] bg-brand-black px-5 py-3.5 text-[15px] font-bold text-brand-white transition-colors hover:bg-brand-black-hover active:scale-[0.98]"
             >
               Empezar gratis

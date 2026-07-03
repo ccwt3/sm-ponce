@@ -1,4 +1,4 @@
-import { FEATURES } from "../../lib/landing/features-data";
+import { FEATURES } from "@/lib/landing/features-data";
 import { FeatureCard } from "./feature-card";
 
 export function FeaturesSection() {

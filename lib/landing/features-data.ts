@@ -13,14 +13,14 @@ export const FEATURES: Feature[] = [
     id: "ficha-completa",
     icon: LayoutGrid,
     title: "Ficha completa por pieza",
-    description: "Modelo, medida, tipo y descripción en un solo registro, fácil de buscar y editar.",
+    description: "Modelo, medida, tipo en un solo registro, fácil de buscar y editar.",
   },
   {
     id: "precios",
     icon: ArrowUpDown,
     title: "Precio proveedor y público",
     description:
-      "Captura ambos precios y conoce tu margen real en cada venta, sin calculadora aparte.",
+      "Captura ambos precios y manten control sobre tus márgenes",
   },
   {
     id: "busqueda",

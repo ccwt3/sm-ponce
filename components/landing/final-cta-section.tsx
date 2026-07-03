@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { LOGIN_PATH, BETA_DEADLINE } from "../../lib/landing/constants";
+import { BETA_DEADLINE, SIGNUP_PATH } from "@/lib/landing/constants";
 import { CountdownBlocks } from "./countdown-blocks";
 
 export function FinalCtaSection() {
@@ -25,7 +25,7 @@ export function FinalCtaSection() {
             </p>
 
             <Link
-              href={LOGIN_PATH}
+              href={SIGNUP_PATH}
               className="inline-flex items-center gap-2 rounded-[9px] bg-white px-5 py-3.5 text-[15px] font-bold text-brand-black transition-colors hover:bg-[#e8e8e8] active:scale-[0.98]"
             >
               Crear mi cuenta gratis

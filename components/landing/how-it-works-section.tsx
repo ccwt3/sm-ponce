@@ -1,4 +1,4 @@
-import { ONBOARDING_STEPS } from "../../lib/landing/onboarding-data";
+import { ONBOARDING_STEPS } from "@/lib/landing/onboarding-data";
 
 export function HowItWorksSection() {
   return (

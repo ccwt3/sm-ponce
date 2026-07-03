@@ -20,6 +20,6 @@ export function formatPrice(value: number): string {
 
 export function getStockStatus(existencia: number): StockStatus {
   if (existencia === 0) return "empty";
-  if (existencia <= 3) return "low";
+  if (existencia <= 5) return "low";
   return "ok";
 }

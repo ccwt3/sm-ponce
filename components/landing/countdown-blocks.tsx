@@ -1,7 +1,7 @@
 "use client";
 
-import { useCountdown } from "../../lib/landing/use-countdown";
-import { padTwoDigits } from "../../lib/landing/countdown";
+import { useCountdown } from "@/lib/landing/use-countdown";
+import { padTwoDigits } from "@/lib/landing/countdown";
 
 interface CountdownBlocksProps {
   deadline: Date;

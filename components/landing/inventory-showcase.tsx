@@ -1,5 +1,5 @@
-import { SHOWCASE_ANCHOR_ID } from "../../lib/landing/constants";
-import { SHOWCASE_INVENTORY, formatPrice } from "../../lib/landing/showcase-data";
+import { SHOWCASE_ANCHOR_ID } from "@/lib/landing/constants";
+import { SHOWCASE_INVENTORY, formatPrice } from "@/lib/landing/showcase-data";
 import { StockBadge } from "./stock-badge";
 
 const TABLE_COLUMNS = [

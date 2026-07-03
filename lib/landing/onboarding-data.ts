@@ -8,13 +8,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     number: "01",
     title: "Crea tu cuenta",
-    description: "Entra con tu correo, sin instalar nada ni configurar servidores.",
+    description: "Entra con tu correo, sin instalar ni configurar NADA.",
   },
   {
     number: "02",
     title: "Carga tus piezas",
     description:
-      "Agrega cada producto con su modelo, medida, existencia y precios — uno por uno o por lotes.",
+      "Agrega cada producto con su modelo, medida, existencia y precios y listo, tu catálogo está en línea.",
   },
   {
     number: "03",
