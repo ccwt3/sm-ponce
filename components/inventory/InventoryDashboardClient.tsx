@@ -5,6 +5,10 @@ import { Search } from "lucide-react";
 import posthog from "posthog-js";
 
 import { ConfirmDeleteDialog } from "@/components/inventory/ConfirmDeleteDialog";
+import {
+  EmptyInventoryState,
+  EmptySearchState,
+} from "@/components/inventory/EmptyState";
 import { FloatingErrorNotice } from "@/components/inventory/FloatingErrorNotice";
 import { ProductModal } from "@/components/inventory/ProductModal";
 import { ProductPagination } from "@/components/inventory/ProductPagination";
@@ -135,18 +139,25 @@ export function InventoryDashboardClient({
           <p className={inventoryState.error}>{error}</p>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && products.length > 0 && (
           <ProductTable
-            emptyMessage={
-              isShowingLocalSearchResults
-                ? "No hay coincidencias en las paginas cargadas."
-                : undefined
-            }
             products={products}
             onEdit={openEdit}
             onRequestDelete={setProductToDelete}
           />
         )}
+
+        {!loading && !error && products.length === 0 && !isSearchMode && (
+          <EmptyInventoryState onAddFirst={handleOpenCreate} />
+        )}
+
+        {!loading &&
+          !error &&
+          products.length === 0 &&
+          isSearchMode &&
+          !isSearching && (
+            <EmptySearchState onClearSearch={() => setSearch("")} />
+          )}
 
         <ProductSearchStatus
           error={searchError}

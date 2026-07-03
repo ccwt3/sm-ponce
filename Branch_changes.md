@@ -1,5 +1,54 @@
 # Branch changes
 
+## Sesion: Empty states guiados del inventario (3 jul 2026)
+
+Origen: reemplazar el texto plano "No se encontraron productos." por dos empty
+states útiles y guiados, usando iconos de `lucide-react`.
+
+### Lo que se hizo
+
+1. **`components/inventory/EmptyState.tsx` (nuevo)**. Dos componentes:
+   - `EmptyInventoryState` (Versión A, inventario vacío): icono `Package`, título
+     en negritas, subtítulo, CTA "+ Agregar primera refacción" y una tarjeta
+     discreta de guía de inicio rápido con checks decorativos (no funcionales).
+     El CTA recibe `onAddFirst` y se conecta al mismo `handleOpenCreate` del botón
+     "Agregar" principal.
+   - `EmptySearchState` (Versión B, búsqueda sin resultados): icono `SearchX`,
+     título, subtítulo y botón "Limpiar búsqueda" que llama `onClearSearch`
+     (`setSearch("")`).
+
+2. **`components/inventory/InventoryDashboardClient.tsx`**. La decisión de qué
+   empty state mostrar subió al dashboard, que ya tiene las señales necesarias.
+   Lógica simplificada respecto a lo pedido: con 0 productos, si `isSearchMode`
+   está activo se muestra Versión B (solo cuando `!isSearching`, para evitar el
+   parpadeo de "Sin resultados" mientras llega la búsqueda remota); si no,
+   Versión A. Se apoya en `isSearchMode`/`isSearching` derivados del texto
+   normalizado en vez de inspeccionar `page=n`.
+
+3. **`components/inventory/ProductTable.tsx`**. Se quitó el prop `emptyMessage` y
+   el guard de lista vacía; ahora solo renderiza la tabla (el padre solo lo monta
+   cuando hay productos). Se eliminó el import ya no usado de `inventoryState`.
+
+Estilo consistente con la app (tokens `muted`/`border`/`foreground`, botones de
+`inventoryButton`). Lint sin errores en los archivos tocados.
+
+4. **`README.md` sincronizado**. Se documento en la doc principal todo lo que
+   faltaba respecto a la codebase real:
+   - Estados vacios guiados del inventario (funcionalidad, componente
+     `EmptyState.tsx`, y la decision de flujo A/B basada en
+     `isSearchMode`/`isSearching`).
+   - `EmptyState.tsx` agregado a la responsabilidad de `components/inventory/`.
+   - Rutas publicas estaticas `/terms.html` y `/privacy.html` (`public/`),
+     que estaban en `publicPaths` del proxy pero faltaban en la tabla de rutas.
+   - Mencion de la seccion FAQ y CTA final en `components/landing/`.
+   - Nueva "decision actual" sobre como se eligen los estados vacios en cliente.
+   Se verificaron los items de "Limitaciones conocidas" contra el codigo
+   (`console.log` en NavbarMenu, footer `href="#"`, `/login` heredado en proxy,
+   componentes `auth-button`/`logout-button`/`env-var-warning`/`theme-switcher`
+   sin consumidor): siguen vigentes, no se removio nada por no estar obsoleto.
+
+[Listo omar]
+
 ## Sesion: Google OAuth + registro sin confirmacion de email (2 jul 2026)
 
 Origen: agregar login con Google y quitar la pantalla de confirmacion (registro

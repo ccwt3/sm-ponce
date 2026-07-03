@@ -2,13 +2,11 @@ import type { Product } from "@/types";
 import { RowInformation } from "@/components/inventory/ProductTableRows";
 import {
   inventoryButton,
-  inventoryState,
   inventoryTable,
 } from "@/components/inventory/styles";
 import { productTableColumns } from "@/lib/contentNormalizer";
 
 interface ProductTableProps {
-  emptyMessage?: string;
   products: Product[];
   onEdit: (product: Product) => void;
   onRequestDelete: (product: Product) => void;
@@ -20,19 +18,10 @@ const editedFields = [
 ] as const;
 
 export function ProductTable({
-  emptyMessage = "No se encontraron productos.",
   products,
   onEdit,
   onRequestDelete,
 }: ProductTableProps) {
-  if (products.length === 0) {
-    return (
-      <div className={inventoryState.empty}>
-        {emptyMessage}
-      </div>
-    );
-  }
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">

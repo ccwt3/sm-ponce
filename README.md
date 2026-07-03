@@ -62,6 +62,22 @@ la existencia sea un entero.
 El borrado solicita confirmacion y se refleja de forma optimista en la tabla. Si
 la operacion falla, el producto se restaura y el error aparece en la interfaz.
 
+Cuando no hay productos que mostrar, el inventario presenta un estado vacio
+guiado en lugar de un texto plano. Existen dos versiones y la decision se toma en
+`InventoryDashboardClient` a partir de las senales del hook `useInventory`:
+
+- **Inventario vacio** (sin busqueda activa y cero productos): icono, titulo,
+  subtitulo, un CTA "Agregar primera refaccion" que reutiliza la misma accion del
+  boton principal de alta, y una guia de inicio rapido con checks decorativos.
+- **Busqueda sin resultados** (busqueda activa y cero coincidencias, una vez
+  terminada la consulta remota): icono de busqueda tachada, mensaje y un boton
+  "Limpiar busqueda" que resetea el input.
+
+Ambas versiones viven en `components/inventory/EmptyState.tsx`. La version de
+busqueda espera a que termine la consulta remota (`isSearching`) para no
+parpadear "sin resultados" mientras llega la respuesta. `ProductTable` quedo
+enfocado unicamente en renderizar la tabla; el caso vacio ya no vive en el.
+
 ### Tipos de producto
 
 El selector de tipos permite:
@@ -196,8 +212,8 @@ Route Handlers ni scripts.
 | --- | --- |
 | `app/` | Paginas, layouts, autenticacion y endpoints internos. |
 | `app/landing/` | Pagina de aterrizaje de la beta (publica). |
-| `components/inventory/` | Tabla, modal, selector de tipos, confirmaciones y errores del inventario. |
-| `components/landing/` | Componentes de la pagina de aterrizaje (hero, features, countdown, etc.). |
+| `components/inventory/` | Tabla, modal, selector de tipos, confirmaciones, estados vacios guiados (`EmptyState.tsx`) y errores del inventario. |
+| `components/landing/` | Componentes de la pagina de aterrizaje (hero, features, countdown, FAQ, CTA final, etc.). |
 | `components/layout/` | Navegacion y pie de pagina del inventario. |
 | `components/ui/` | Primitivas reutilizables de interfaz. |
 | `hooks/` | Estado y operaciones interactivas del cliente. |
@@ -290,6 +306,8 @@ Puntos de registro de la aceptacion:
 | --- | --- | --- |
 | `/` | Autenticado | Inventario principal. |
 | `/landing` | Invitado | Pagina de aterrizaje de la beta. |
+| `/terms.html` | Publica | Terminos y condiciones (archivo estatico en `public/`). |
+| `/privacy.html` | Publica | Aviso de privacidad (archivo estatico en `public/`). |
 | `/auth/login` | Invitado | Inicio de sesion. |
 | `/auth/sign-up` | Invitado | Registro. |
 | `/auth/forgot-password` | Invitado | Solicitud de recuperacion. |
@@ -487,6 +505,10 @@ como `Sin tipo` en la UI.
   pasan por la capa `database/*`.
 - La busqueda usa consulta server-side y fallback local sobre paginas cacheadas
   para responder mientras llega la red.
+- Los estados vacios se deciden en el cliente segun `isSearchMode`/`isSearching`,
+  no inspeccionando `page=n`: sin termino de busqueda se muestra el estado de
+  inventario vacio con CTA de alta; con termino activo y sin coincidencias (una
+  vez terminada la consulta) se muestra el estado de busqueda sin resultados.
 - La consulta inicial carga la primera pagina de 50 productos del usuario.
 - El cliente conserva hasta 5 paginas normales y 10 paginas de busqueda en
   cache LRU durante la sesion de la vista.
