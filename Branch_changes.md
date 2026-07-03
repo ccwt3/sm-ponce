@@ -1,5 +1,18 @@
 # Branch changes
 
+## Sesion: Seccion FAQ en la landing (2 jul 2026)
+
+Se agrego una seccion de preguntas frecuentes a la landing (`app/page.tsx`),
+ubicada dentro de `<main>` justo antes del footer. Siguiendo la convencion de las
+demas secciones, el contenido vive en datos (`lib/landing/faq-data.ts`, con la
+interfaz `FaqItem` y el array `FAQS` de 4 pares pregunta/respuesta) y la
+presentacion en el componente `components/landing/faq-section.tsx`. Reutiliza los
+mismos tokens de estilo que el resto de la pagina (eyebrow `text-brand-text-muted`,
+titulo `text-[26px]/[32px]` extrabold, filas separadas con `border-brand-border` al
+estilo de `how-it-works-section`, y `bg-brand-surface` para alternar con la seccion
+blanca previa). No se inventaron preguntas: solo las 4 provistas. `pnpm lint` y
+`pnpm build` pasan limpios. [Listo omar]
+
 ## Sesion: Verificacion de integracion de PostHog (30 jun 2026)
 
 Origen: ejecutar la seccion "Verify before merging" de `posthog-setup-report.md`

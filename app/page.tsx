@@ -6,6 +6,7 @@ import { StockStatesSection } from "../components/landing/stock-states-section";
 import { FeaturesSection } from "../components/landing/features-section";
 import { HowItWorksSection } from "../components/landing/how-it-works-section";
 import { FinalCtaSection } from "../components/landing/final-cta-section";
+import { FaqSection } from "../components/landing/faq-section";
 import { SiteFooter } from "../components/landing/site-footer";
 import { BetaModal } from "../components/landing/beta-modal";
 
@@ -26,6 +27,7 @@ export default function LandingPage() {
         <StockStatesSection />
         <FeaturesSection />
         <HowItWorksSection />
+        <FaqSection />
         <FinalCtaSection />
       </main>
 

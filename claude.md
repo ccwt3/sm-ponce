@@ -8,6 +8,7 @@ Al momento de hacer los cambios pedidos por mi, hay que tener siempre en cuenta:
  - Buenas practicas de programacion.
  - Enfoque en la mantenibilidad del codigo.
  - La relacion Modularidad - legibilidad (con el objetivo de que tanto agentes AI y humanos puedan trabajarlo).
+ - No sobre ingenierizes si no hay necesidad
 
 Todos los cambios de arquitectura o decisiones tecnicas iran en README.md (documentacion principal), y los cambios menores en Branch_changes, Branch_Status es un archivo de documentacion temporal y se indicara cuando hay que usarlo.
 
