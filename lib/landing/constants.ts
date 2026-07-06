@@ -1,4 +1,4 @@
-export const BETA_DEADLINE_ISO = "2026-07-06T23:59:59-06:00";
+export const BETA_DEADLINE_ISO = "2026-07-10T23:59:59-06:00";
 
 export const BETA_DEADLINE = new Date(BETA_DEADLINE_ISO);
 
