@@ -1,5 +1,64 @@
 # Branch changes
 
+## Sesion: Fix de desbordamiento horizontal en la landing movil (6 jul 2026)
+
+Origen: en movil (iPhone SE 375px y menores) la landing tenia scroll horizontal:
+el navbar sacaba "Iniciar sesion"/"Crear cuenta", el banner superior se veia
+cortado a la derecha y el cuerpo se desbordaba. Objetivo: corregir solo el
+desbordamiento, sin tocar el diseno visual.
+
+### Causa raiz
+
+El navbar (`components/landing/site-header.tsx`) tenia la marca + los dos botones
+(ambos `whitespace-nowrap`) en un `justify-between` sin `flex-wrap`. En 375px la
+suma (~427px) excedia el ancho disponible (~335px), empujando el ancho del
+documento mas alla del viewport. Eso generaba scroll horizontal y hacia que el
+banner sticky (ancho de viewport) se viera "cortado a la derecha".
+
+### Lo que se hizo
+
+1. **`app/layout.tsx`**. Se agrego `overflow-x-clip` al `<body>` (contenedor
+   principal). Se uso `clip` en vez de `hidden` a proposito: `overflow-x: hidden`
+   fuerza `overflow-y: auto` y crea un scroll container que rompe el
+   `position: sticky` del banner y del header; `clip` recorta el desbordamiento
+   horizontal sin romper el sticky.
+
+2. **`components/landing/site-header.tsx`**. El navbar paso de `justify-between`
+   (sin wrap) a `flex-wrap` con `gap-x-3 gap-y-2.5`, y el grupo de botones se
+   alinea a la derecha con `ml-auto` (replica el `justify-between` en desktop y
+   permite que en movil los botones bajen a una segunda fila alineados a la
+   derecha, ambos completos). Padding movil un poco menor (`px-4`/`px-3`) y la
+   marca con `min-w-0`. Desktop queda identico.
+
+3. **`components/landing/urgency-bar.tsx`**. Banner explicito con `w-full
+   max-w-full` (ya tenia `text-center` y padding horizontal `px-4`).
+
+4. **`components/landing/inventory-showcase.tsx`**. Se agrego `min-w-0 max-w-full`
+   a la tarjeta raiz para que la tabla `min-w-[640px]` (que ya scrollea dentro de
+   su `overflow-x-auto`) no expanda el grid del hero.
+
+5. **Fix del sticky banner/header (movil).** El header usaba `sticky top-[33px]`,
+   un offset fijo que asume que el banner mide 33px (cierto en desktop de 1 linea,
+   falso en movil donde el banner ocupa 2-3 lineas ~105px), provocando que el
+   header se solapara con el banner al hacer scroll. Solucion robusta sin adivinar
+   alturas: se quitaron los `sticky` individuales de `urgency-bar.tsx`
+   (`sticky top-0 z-[60]`) y `site-header.tsx` (`sticky top-[33px] z-50`), y en
+   `app/page.tsx` ambos se envolvieron en un unico contenedor
+   `<div className="sticky top-0 z-[60]">`. Asi banner + navbar se fijan juntos
+   como bloque a cualquier altura; el header siempre queda justo debajo del banner
+   sin solape. Desktop identico (ambos fijos, banner 1 linea).
+
+Se agrego `.claude/launch.json` (config de dev server para preview local).
+
+### Verificacion
+
+- `pnpm lint` y `pnpm build` pasan limpios.
+- Preview a 375px: `document.scrollWidth == clientWidth` (375) y
+  `hasHorizontalScroll: false`. Navbar con botones en 2da fila visibles, banner
+  full width sin corte. Desktop sin cambios respecto al diseno original.
+
+[Listo omar]
+
 ## Sesion: Empty states guiados del inventario (3 jul 2026)
 
 Origen: reemplazar el texto plano "No se encontraron productos." por dos empty

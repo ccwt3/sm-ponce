@@ -3,7 +3,7 @@ import { BETA_DEADLINE } from "../../lib/landing/constants";
 
 export function UrgencyBar() {
   return (
-    <div className="sticky top-0 z-[60] flex flex-wrap items-center justify-center gap-2.5 border-b border-black bg-brand-black px-4 py-2 text-center text-[13px] text-brand-white">
+    <div className="flex w-full max-w-full flex-wrap items-center justify-center gap-2.5 border-b border-black bg-brand-black px-4 py-2 text-center text-[13px] text-brand-white">
       <span
         aria-hidden="true"
         className="h-1.5 w-1.5 flex-none animate-pulse rounded-full bg-emerald-400"

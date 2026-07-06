@@ -16,7 +16,7 @@ export function InventoryShowcase() {
   return (
     <div
       id={SHOWCASE_ANCHOR_ID}
-      className="overflow-hidden rounded-2xl border border-brand-border bg-brand-surface shadow-[0_20px_60px_-20px_rgba(0,0,0,0.18)]"
+      className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-brand-border bg-brand-surface shadow-[0_20px_60px_-20px_rgba(0,0,0,0.18)]"
     >
       <div className="flex items-center gap-1.5 bg-[#2a2a2a] px-3.5 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#555]" />

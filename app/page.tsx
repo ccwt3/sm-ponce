@@ -19,8 +19,10 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <>
-      <UrgencyBar />
-      <SiteHeader />
+      <div className="sticky top-0 z-[60]">
+        <UrgencyBar />
+        <SiteHeader />
+      </div>
 
       <main>
         <HeroSection />

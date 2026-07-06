@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="font-sans">
+      <body className="font-sans overflow-x-clip">
         {children}
 
         <PostHogAuthIdentifier />
