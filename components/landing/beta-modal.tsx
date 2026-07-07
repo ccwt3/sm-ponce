@@ -6,7 +6,7 @@ import { X, ArrowRight } from "lucide-react";
 import { SIGNUP_PATH, BETA_DEADLINE } from "../../lib/landing/constants";
 import { CountdownBlocks } from "./countdown-blocks";
 
-const OPEN_DELAY_MS = 600;
+const OPEN_DELAY_MS = 30 * 1000; // 5 seconds
 
 export function BetaModal() {
   const [isOpen, setIsOpen] = useState(false);
