@@ -1,3 +1,9 @@
+> [!NOTE]
+> This project was created with the intention of being a SaaS, it failed prolly for not taking into account incompatibilities with meta's embedded browser, excess of artificial urgency and poor register flow.
+> However while i can fix it, I ran out of funds for the project.
+>
+> Project status: **Archived**
+
 # Motorefacciones - Inventario
 
 Aplicacion web privada para administrar el inventario de una refaccionaria de
